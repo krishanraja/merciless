@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /onboarding
+Disallow: /reading
+Disallow: /chart
+Disallow: /oracle
+Disallow: /settings
+
+Sitemap: https://merciless.app/sitemap.xml
