@@ -34,7 +34,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-merciless-black flex items-center justify-center">
         <StarfieldBg />
-        <img src="/merciless-orange-icon.svg" alt="Merciless" className="h-12 w-12 animate-pulse" />
+        <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-12 w-12 animate-pulse" />
       </div>
     )
   }
