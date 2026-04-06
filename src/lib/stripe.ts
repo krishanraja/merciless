@@ -3,8 +3,8 @@ import { loadStripe } from '@stripe/stripe-js'
 
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
 
-// Merciless Pro price ID (created via Stripe API during build)
-export const MERCILESS_PRO_PRICE_ID = 'price_PLACEHOLDER' // Will be set after Stripe product creation
+// Merciless Pro price ID — set via VITE_STRIPE_PRICE_ID env var
+export const MERCILESS_PRO_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID as string
 
 export const MERCILESS_PRO_PRICE_CENTS = 499
 export const MERCILESS_PRO_PRICE_DISPLAY = '$4.99/mo'

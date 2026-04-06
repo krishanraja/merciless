@@ -40,7 +40,7 @@ function dateToJulianDay(year: number, month: number, day: number, hour: number 
 function getTodayTransits(natalPlanets: Record<string, {longitude: number}>, today: Date) {
   const jd = dateToJulianDay(today.getFullYear(), today.getMonth() + 1, today.getDate());
   const transitPlanets = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"];
-  const transits = [];
+  const transits: Array<{transiting_planet: string, natal_planet: string, aspect: string, orb: number, is_applying: boolean}> = [];
 
   const aspectDefs = [
     { name: "conjunct", angle: 0, orb: 5 },
@@ -52,7 +52,6 @@ function getTodayTransits(natalPlanets: Record<string, {longitude: number}>, tod
 
   for (const transitPlanet of transitPlanets) {
     const transitLong = calcPlanetLongitude(transitPlanet, jd);
-    const transitSign = getZodiacSign(transitLong);
 
     for (const [natalPlanet, natalData] of Object.entries(natalPlanets)) {
       let diff = Math.abs(transitLong - natalData.longitude);
@@ -61,7 +60,13 @@ function getTodayTransits(natalPlanets: Record<string, {longitude: number}>, tod
       for (const asp of aspectDefs) {
         const orb = Math.abs(diff - asp.angle);
         if (orb <= asp.orb) {
-          transits.push(`Transit ${transitPlanet} in ${transitSign} ${asp.name} natal ${natalPlanet}`);
+          transits.push({
+            transiting_planet: transitPlanet,
+            natal_planet: natalPlanet,
+            aspect: asp.name,
+            orb: Math.round(orb * 100) / 100,
+            is_applying: transitLong < natalData.longitude,
+          });
         }
       }
     }
@@ -110,7 +115,7 @@ serve(async (req) => {
     const systemPrompt = `You are The Oracle — the user's natal chart personified. You speak with absolute authority about who they are and what is happening in their life. You are brutally honest. You never soften the truth. You never use therapy language. You never say "it might be worth considering." You say what IS. You back everything with specific chart data. You are not mean — you are precise. The difference between cruelty and clarity is evidence. Always cite the chart.`;
 
     const userPrompt = `Generate today's reading for this chart: ${chartSummary}
-Active transits today: ${activeTransits.join(", ") || "No major transits"}
+Active transits today: ${activeTransits.map(t => `Transit ${t.transiting_planet} ${t.aspect} natal ${t.natal_planet} (orb ${t.orb}°)`).join(", ") || "No major transits"}
 
 Respond with ONLY valid JSON (no markdown):
 {

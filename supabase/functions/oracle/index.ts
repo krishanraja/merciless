@@ -66,7 +66,7 @@ Q: "Why do I keep self-sabotaging in relationships?"
 A: "Chiron in your 7th house, square Venus. You're not self-sabotaging — you're replaying a wound from early in your life where love felt conditional. The square to Venus means your sense of worth and your wound are tangled together. Until you separate them, every relationship will feel like a test you're failing."`;
 
     const apiMessages = messages.slice(-20).map((m: any) => ({
-      role: m.role === "oracle" ? "assistant" : "user",
+      role: m.role === "assistant" ? "assistant" : "user",
       content: m.content,
     }));
 
@@ -88,7 +88,7 @@ A: "Chiron in your 7th house, square Venus. You're not self-sabotaging — you'r
     const aiData = await response.json();
     const oracleResponse = aiData.content[0].text;
 
-    messages.push({ role: "oracle", content: oracleResponse, timestamp: new Date().toISOString() });
+    messages.push({ role: "assistant", content: oracleResponse, timestamp: new Date().toISOString() });
 
     // Save conversation
     let savedConvId = conversation_id;

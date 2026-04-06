@@ -78,10 +78,26 @@ export interface DailyReading {
   brutal_headline: string
   reading_text: string
   stoic_actions: StoicAction[]
-  intensity_score: number
-  moon_phase: string
-  dominant_transit: string
+  active_transits: ActiveTransit[]
+  planet_focus: string
+  intensity_level: number
+  shareable_card_data?: {
+    sun_sign: string
+    moon_sign: string
+    rising_sign: string
+    brutal_headline: string
+    date: string
+  }
+  is_free_tier: boolean
   created_at: string
+}
+
+export interface ActiveTransit {
+  transiting_planet: string
+  natal_planet: string
+  aspect: string
+  orb: number
+  is_applying: boolean
 }
 
 export interface StoicAction {
