@@ -33,7 +33,9 @@ export default function Reading() {
     <div className="relative z-10 min-h-screen">
       <nav className="border-b border-merciless-border px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div className="text-merciless-gold font-bold tracking-[0.2em] text-sm">MERCILESS</div>
+          <Link to="/reading">
+            <img src="/merciless-orange-icon.svg" alt="Merciless" className="h-7 w-7" />
+          </Link>
           <div className="hidden md:flex items-center gap-6">
             {NAV_LINKS.map((l) => (
               <Link
