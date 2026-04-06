@@ -61,7 +61,7 @@ export default function Onboarding() {
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-12">
-          <img src="/merciless-orange-icon.svg" alt="Merciless" className="h-9 w-9 mx-auto mb-4" />
+          <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-9 w-9 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-merciless-white mb-3">
             {step < 3 ? 'Build your chart' : 'Calculating your chart'}
           </h1>

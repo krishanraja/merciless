@@ -50,7 +50,7 @@ export default function Landing() {
     <div className="relative z-10 min-h-screen flex flex-col">
       {/* Nav */}
       <nav className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto w-full">
-        <img src="/merciless-orange-icon.svg" alt="Merciless" className="h-8 w-8" />
+        <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-8 w-8" />
         <div className="text-merciless-muted text-sm">
           <button onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')} className="hover:text-merciless-white transition-colors">
             {mode === 'signin' ? 'Create account' : 'Sign in'}
@@ -62,7 +62,7 @@ export default function Landing() {
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-16 max-w-5xl mx-auto w-full">
         <div className="text-center mb-16 animate-fade-in">
           <img
-            src="/merciless-orange-logo.svg"
+            src="/merciless%20orange%20logo.png"
             alt="Merciless"
             className="h-10 md:h-14 mx-auto mb-10"
           />
