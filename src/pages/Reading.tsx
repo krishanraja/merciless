@@ -34,7 +34,7 @@ export default function Reading() {
       <nav className="border-b border-merciless-border px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link to="/reading">
-            <img src="/merciless-orange-icon.svg" alt="Merciless" className="h-7 w-7" />
+            <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-7 w-7" />
           </Link>
           <div className="hidden md:flex items-center gap-6">
             {NAV_LINKS.map((l) => (
