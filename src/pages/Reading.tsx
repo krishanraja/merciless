@@ -152,7 +152,7 @@ export default function Reading() {
                           key={i}
                           className="text-xs bg-merciless-black border border-merciless-border rounded px-3 py-1.5 text-merciless-muted"
                         >
-                          {transit}
+                          {`${transit.transiting_planet} ${transit.aspect} ${transit.natal_planet}`}
                         </span>
                       ))}
                     </div>

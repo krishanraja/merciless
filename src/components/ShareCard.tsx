@@ -51,9 +51,6 @@ export default function ShareCard({ data }: ShareCardProps) {
     }
   }
 
-  const sunGlyph = ZODIAC_GLYPHS[data.sunSign as ZodiacSign] || '☉'
-  const moonGlyph = ZODIAC_GLYPHS[data.moonSign as ZodiacSign] || '☽'
-  const risingGlyph = ZODIAC_GLYPHS[data.risingSign as ZodiacSign] || '↑'
   const moonEmoji = getMoonPhaseEmoji(data.moonPhase || 'full')
 
   return (
