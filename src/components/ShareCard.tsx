@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
-import { ZODIAC_GLYPHS, getMoonPhaseEmoji } from '../lib/astrology'
-import type { ZodiacSign } from '../lib/astrology'
+import { getMoonPhaseEmoji } from '../lib/astrology'
 
 interface ShareCardData {
   brutalHeadline: string
