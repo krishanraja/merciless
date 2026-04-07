@@ -3,7 +3,7 @@ import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
 import PlanetTable from '../components/PlanetTable'
 import SignBadge from '../components/SignBadge'
-import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
+import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ELEMENT_EMOJIS, MODALITY_COLORS, MODALITY_DESCRIPTIONS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
 import { getSignAsset } from '../lib/signAssets'
 import type { ZodiacSign } from '../lib/astrology'
 
@@ -115,6 +115,8 @@ export default function Chart() {
                 { label: 'RISING', value: chart.rising_sign, symbol: '↑', color: '#9D4EDD' },
               ].map((item) => {
                 const signAsset = getSignAsset(item.value)
+                const element = SIGN_ELEMENTS[item.value as ZodiacSign]
+                const modality = SIGN_MODALITIES[item.value as ZodiacSign]
                 return (
                   <div 
                     key={item.label} 
@@ -141,6 +143,30 @@ export default function Chart() {
                       </div>
                       <div className="text-merciless-white font-bold text-lg">{item.value}</div>
                       <div className="text-merciless-muted text-xs tracking-widest mt-1">{item.label}</div>
+                      
+                      {/* Element & Modality badges */}
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        <span 
+                          className="text-[10px] px-2 py-0.5 rounded-full border"
+                          style={{ 
+                            color: ELEMENT_COLORS[element], 
+                            borderColor: `${ELEMENT_COLORS[element]}40`,
+                            backgroundColor: `${ELEMENT_COLORS[element]}10`
+                          }}
+                        >
+                          {ELEMENT_EMOJIS[element]} {element}
+                        </span>
+                        <span 
+                          className="text-[10px] px-2 py-0.5 rounded-full border"
+                          style={{ 
+                            color: MODALITY_COLORS[modality], 
+                            borderColor: `${MODALITY_COLORS[modality]}40`,
+                            backgroundColor: `${MODALITY_COLORS[modality]}10`
+                          }}
+                        >
+                          {modality}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )

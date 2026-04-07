@@ -89,6 +89,25 @@ export const ELEMENT_COLORS: Record<string, string> = {
   'Water': '#76E4F7',
 }
 
+export const ELEMENT_EMOJIS: Record<string, string> = {
+  'Fire': '🔥',
+  'Earth': '🌍',
+  'Air': '💨',
+  'Water': '💧',
+}
+
+export const MODALITY_COLORS: Record<string, string> = {
+  'Cardinal': '#F5A623',
+  'Fixed': '#9D4EDD',
+  'Mutable': '#22C55E',
+}
+
+export const MODALITY_DESCRIPTIONS: Record<string, string> = {
+  'Cardinal': 'Initiator',
+  'Fixed': 'Stabilizer',
+  'Mutable': 'Adapter',
+}
+
 export function getLongitudeDegree(longitude: number): number {
   return longitude % 30
 }
