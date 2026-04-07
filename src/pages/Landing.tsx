@@ -28,7 +28,7 @@ export default function Landing() {
               <img
                 src="/merciless%20orange%20logo.png"
                 alt="Merciless"
-                className="h-14 sm:h-16 md:h-20 lg:h-24 mx-auto"
+                className="h-28 sm:h-32 md:h-40 lg:h-72 mx-auto"
               />
             </div>
 
