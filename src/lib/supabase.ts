@@ -29,30 +29,36 @@ export async function getUser() {
 }
 
 // Database types
-export interface NatalChart {
+export interface UserBirthData {
   id: string
   user_id: string
   birth_date: string
-  birth_time: string
+  birth_time?: string
   birth_location: string
-  latitude: number
-  longitude: number
-  timezone: string
-  planets: PlanetPosition[]
+  latitude?: number
+  longitude?: number
+  timezone?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface NatalChart {
+  id: string
+  user_id: string
+  planets: Record<string, { sign: string; longitude: number; degree: number }>
   houses: HouseData[]
   aspects: Aspect[]
+  ascendant?: string
+  midheaven?: string
   sun_sign: string
   moon_sign: string
   rising_sign: string
-  created_at: string
+  calculated_at: string
 }
 
 export interface PlanetPosition {
-  name: string
   sign: string
   degree: number
-  house: number
-  retrograde: boolean
   longitude: number
 }
 
@@ -66,9 +72,8 @@ export interface HouseData {
 export interface Aspect {
   planet1: string
   planet2: string
-  type: string
+  aspect: string
   orb: number
-  applying: boolean
 }
 
 export interface DailyReading {
@@ -110,6 +115,7 @@ export interface OracleConversation {
   id: string
   user_id: string
   messages: OracleMessage[]
+  session_title?: string
   created_at: string
   updated_at: string
 }
@@ -123,10 +129,12 @@ export interface OracleMessage {
 export interface UserSubscription {
   id: string
   user_id: string
-  stripe_customer_id: string
-  stripe_subscription_id: string
-  status: 'active' | 'canceled' | 'past_due' | 'trialing'
-  current_period_end: string
+  stripe_customer_id?: string
+  stripe_subscription_id?: string
+  stripe_price_id?: string
+  status: 'active' | 'canceled' | 'past_due' | 'inactive'
+  current_period_end?: string
+  cancel_at_period_end: boolean
   created_at: string
   updated_at: string
 }

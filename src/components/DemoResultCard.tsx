@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import DemoShareCard from './DemoShareCard'
+import { getSignAsset } from '../lib/signAssets'
 
 interface DemoResult {
   sunSign: string
@@ -12,21 +13,6 @@ interface DemoResultCardProps {
   result: DemoResult
   onReset: () => void
   onSignupClick: () => void
-}
-
-const signEmojis: Record<string, string> = {
-  Aries: '♈',
-  Taurus: '♉',
-  Gemini: '♊',
-  Cancer: '♋',
-  Leo: '♌',
-  Virgo: '♍',
-  Libra: '♎',
-  Scorpio: '♏',
-  Sagittarius: '♐',
-  Capricorn: '♑',
-  Aquarius: '♒',
-  Pisces: '♓',
 }
 
 export default function DemoResultCard({ result, onReset, onSignupClick }: DemoResultCardProps) {
@@ -55,7 +41,8 @@ export default function DemoResultCard({ result, onReset, onSignupClick }: DemoR
     return () => clearInterval(timer)
   }, [result.brutalHeadline])
 
-  const signEmoji = signEmojis[result.sunSign] || '☉'
+  const signAsset = getSignAsset(result.sunSign)
+  const signEmoji = signAsset?.emoji || '☉'
 
   if (showShareCard) {
     return (
