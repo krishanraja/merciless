@@ -1,19 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNatalChart } from '../hooks/useNatalChart'
+import { useGeocoding, formatLocationName, type GeocodingResult } from '../hooks/useGeocoding'
+import VoiceDateInput from '../components/VoiceDateInput'
 
 export default function Onboarding() {
   const navigate = useNavigate()
   const { calculateChart, calculating } = useNatalChart()
+  const { results: locationResults, loading: locationLoading, search: searchLocation, clear: clearLocationResults } = useGeocoding()
 
   const [step, setStep] = useState(0)
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('')
   const [unknownTime, setUnknownTime] = useState(false)
   const [birthLocation, setBirthLocation] = useState('')
+  const [locationQuery, setLocationQuery] = useState('')
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [latitude, setLatitude] = useState<number | undefined>()
   const [longitude, setLongitude] = useState<number | undefined>()
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (locationQuery.length >= 2) {
+      searchLocation(locationQuery)
+      setShowLocationDropdown(true)
+    } else {
+      clearLocationResults()
+      setShowLocationDropdown(false)
+    }
+  }, [locationQuery, searchLocation, clearLocationResults])
+
+  const handleSelectLocation = (result: GeocodingResult) => {
+    const name = formatLocationName(result)
+    setBirthLocation(name)
+    setLocationQuery(name)
+    setLatitude(parseFloat(result.lat))
+    setLongitude(parseFloat(result.lon))
+    setShowLocationDropdown(false)
+    clearLocationResults()
+  }
 
   const handleNext = () => {
     setError(null)
@@ -57,12 +82,12 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-lg">
+    <div className="relative z-10 h-[100dvh] flex flex-col items-center justify-center px-6 py-6 overflow-hidden">
+      <div className="w-full max-w-lg flex flex-col max-h-full overflow-y-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-9 w-9 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-merciless-white mb-3">
+        <div className="text-center mb-6 flex-shrink-0">
+          <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-9 w-9 mx-auto mb-3" />
+          <h1 className="text-2xl font-bold text-merciless-white mb-2">
             {step < 3 ? 'Build your chart' : 'Calculating your chart'}
           </h1>
           <p className="text-merciless-muted text-sm">
@@ -72,7 +97,7 @@ export default function Onboarding() {
 
         {/* Progress */}
         {step < 3 && (
-          <div className="flex gap-2 mb-10">
+          <div className="flex gap-2 mb-6 flex-shrink-0">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
@@ -85,17 +110,29 @@ export default function Onboarding() {
         )}
 
         {/* Steps */}
-        <div className="merciless-card p-8 space-y-6">
+        <div className="merciless-card p-6 space-y-4 flex-shrink-0">
           {step === 0 && (
-            <div className="animate-fade-in space-y-6">
+            <div className="animate-fade-in space-y-4">
               <div>
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <span className="text-3xl text-merciless-gold">☉</span>
                   <div>
                     <h2 className="text-merciless-white font-semibold">When were you born?</h2>
                     <p className="text-merciless-muted text-sm">Your Sun, Moon, and all planets depend on this.</p>
                   </div>
                 </div>
+                
+                <VoiceDateInput value={birthDate} onChange={setBirthDate} />
+                
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-merciless-border"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-merciless-card px-3 text-merciless-muted">or type it</span>
+                  </div>
+                </div>
+                
                 <label className="text-xs tracking-widest text-merciless-muted block mb-2">BIRTH DATE</label>
                 <input
                   type="date"
@@ -154,9 +191,9 @@ export default function Onboarding() {
           )}
 
           {step === 2 && (
-            <div className="animate-fade-in space-y-6">
+            <div className="animate-fade-in space-y-4">
               <div>
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <span className="text-3xl text-merciless-gold">♃</span>
                   <div>
                     <h2 className="text-merciless-white font-semibold">Where were you born?</h2>
@@ -164,13 +201,48 @@ export default function Onboarding() {
                   </div>
                 </div>
                 <label className="text-xs tracking-widest text-merciless-muted block mb-2">BIRTH LOCATION</label>
-                <input
-                  type="text"
-                  value={birthLocation}
-                  onChange={(e) => setBirthLocation(e.target.value)}
-                  placeholder="e.g. New York, USA"
-                  className="w-full bg-merciless-black border border-merciless-border rounded-lg px-4 py-3 text-merciless-white placeholder-merciless-muted text-sm"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={locationQuery}
+                    onChange={(e) => {
+                      setLocationQuery(e.target.value)
+                      setBirthLocation(e.target.value)
+                      setLatitude(undefined)
+                      setLongitude(undefined)
+                    }}
+                    onFocus={() => locationResults.length > 0 && setShowLocationDropdown(true)}
+                    placeholder="Start typing a city..."
+                    className="w-full bg-merciless-black border border-merciless-border rounded-lg px-4 py-3 text-merciless-white placeholder-merciless-muted text-sm"
+                  />
+                  {locationLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-merciless-gold border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  
+                  {showLocationDropdown && locationResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-merciless-card border border-merciless-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {locationResults.map((result, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleSelectLocation(result)}
+                          className="w-full px-4 py-3 text-left text-sm text-merciless-white hover:bg-merciless-border/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          {formatLocationName(result)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {latitude && longitude && (
+                  <div className="mt-2 text-xs text-merciless-muted flex items-center gap-2">
+                    <span className="text-merciless-gold">✓</span>
+                    <span>Coordinates: {latitude.toFixed(4)}, {longitude.toFixed(4)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -228,7 +300,7 @@ export default function Onboarding() {
         </div>
 
         {step < 3 && (
-          <div className="flex gap-4 mt-6">
+          <div className="flex gap-4 mt-4 flex-shrink-0">
             {step > 0 && (
               <button
                 onClick={() => setStep(step - 1)}
