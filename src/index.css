@@ -33,7 +33,17 @@ html, body {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
+}
+
+/* Landing page viewport lock — bulletproof no-scroll */
+.landing-viewport {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Starfield background */
@@ -54,6 +64,28 @@ html, body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Animated gold shimmer text */
+.text-gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    #C4831A 0%,
+    #F5A623 25%,
+    #FFD700 50%,
+    #F5A623 75%,
+    #C4831A 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmerGold 4s linear infinite;
+}
+
+/* Pill badge glow */
+.pill-glow {
+  animation: glowPulse 3s ease-in-out infinite;
 }
 
 /* Violet gradient text */
@@ -131,6 +163,31 @@ html, body {
 @keyframes pulseGold {
   0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.4); }
   50% { box-shadow: 0 0 0 8px rgba(245, 166, 35, 0); }
+}
+
+@keyframes shimmerGold {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 166, 35, 0.15), 0 0 16px rgba(245, 166, 35, 0.08); }
+  50% { box-shadow: 0 0 16px rgba(245, 166, 35, 0.3), 0 0 32px rgba(245, 166, 35, 0.15); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes typingDot {
