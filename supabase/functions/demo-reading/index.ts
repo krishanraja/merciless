@@ -10,6 +10,11 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 10; // requests per hour
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in ms
 
+// Sanitize AI output: replace em dashes with appropriate punctuation
+function sanitizeEmDashes(text: string): string {
+  return text.replace(/—/g, ";");
+}
+
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const record = rateLimitMap.get(ip);
@@ -171,8 +176,8 @@ Respond with ONLY valid JSON (no markdown):
     return new Response(JSON.stringify({
       success: true,
       sun_sign: sunSign,
-      brutal_headline: parsed.brutal_headline,
-      excerpt: parsed.excerpt,
+      brutal_headline: sanitizeEmDashes(parsed.brutal_headline),
+      excerpt: sanitizeEmDashes(parsed.excerpt),
       birth_date,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

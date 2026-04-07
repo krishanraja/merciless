@@ -3,7 +3,7 @@ import { loadStripe } from '@stripe/stripe-js'
 
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
 
-// Merciless Pro price ID — set via VITE_STRIPE_PRICE_ID env var
+// Merciless Pro price ID: set via VITE_STRIPE_PRICE_ID env var
 export const MERCILESS_PRO_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID as string
 
 export const MERCILESS_PRO_PRICE_CENTS = 499

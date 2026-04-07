@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom'
 import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
 import PlanetTable from '../components/PlanetTable'
+import SignBadge from '../components/SignBadge'
 import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
+import { getSignAsset } from '../lib/signAssets'
 import type { ZodiacSign } from '../lib/astrology'
 
 const NAV_LINKS = [
@@ -98,26 +100,51 @@ export default function Chart() {
               disabled={upgrading}
               className="px-8 py-4 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50"
             >
-              {upgrading ? 'REDIRECTING...' : 'UNLOCK CHART — $4.99/mo'}
+              {upgrading ? 'REDIRECTING...' : 'UNLOCK CHART: $4.99/mo'}
             </button>
           </div>
         )}
 
         {chart && isPro && (
           <div className="space-y-6 animate-fade-in">
-            {/* Big Three */}
+            {/* Big Three with Sign Imagery */}
             <div className="grid grid-cols-3 gap-4">
               {[
                 { label: 'SUN', value: chart.sun_sign, symbol: '☉', color: '#F5A623' },
                 { label: 'MOON', value: chart.moon_sign, symbol: '☽', color: '#C0C0C0' },
                 { label: 'RISING', value: chart.rising_sign, symbol: '↑', color: '#9D4EDD' },
-              ].map((item) => (
-                <div key={item.label} className="merciless-card p-5 text-center">
-                  <div className="text-2xl mb-2" style={{ color: item.color }}>{item.symbol}</div>
-                  <div className="text-merciless-white font-bold text-lg">{item.value}</div>
-                  <div className="text-merciless-muted text-xs tracking-widest mt-1">{item.label}</div>
-                </div>
-              ))}
+              ].map((item) => {
+                const signAsset = getSignAsset(item.value)
+                return (
+                  <div 
+                    key={item.label} 
+                    className="merciless-card p-5 text-center relative overflow-hidden"
+                  >
+                    {/* Background sign image */}
+                    {signAsset && (
+                      <div
+                        className="absolute inset-0 opacity-10"
+                        style={{
+                          backgroundImage: `url(${signAsset.image})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      />
+                    )}
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-merciless-card via-merciless-card/80 to-transparent" />
+                    
+                    {/* Content */}
+                    <div className="relative">
+                      <div className="text-3xl mb-2" style={{ color: item.color }}>
+                        {signAsset?.emoji || item.symbol}
+                      </div>
+                      <div className="text-merciless-white font-bold text-lg">{item.value}</div>
+                      <div className="text-merciless-muted text-xs tracking-widest mt-1">{item.label}</div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Ascendant / Midheaven */}

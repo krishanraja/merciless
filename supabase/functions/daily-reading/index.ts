@@ -6,6 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sanitize AI output: replace em dashes with appropriate punctuation
+function sanitizeEmDashes(text: string): string {
+  return text.replace(/—/g, ";");
+}
+
 function getZodiacSign(longitude: number): string {
   const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
   return signs[Math.floor(longitude / 30) % 12];
@@ -112,7 +117,9 @@ serve(async (req) => {
 
     const chartSummary = `Sun: ${chart.sun_sign}, Moon: ${chart.moon_sign}, Rising: ${chart.rising_sign}, Ascendant: ${chart.ascendant}, Midheaven: ${chart.midheaven}. Key planets: ${Object.entries(chart.planets).slice(0, 6).map(([p, d]: [string, any]) => `${p} in ${d.sign} (${Math.round(d.degree)}°)`).join(", ")}. Key aspects: ${chart.aspects.slice(0, 5).map((a: any) => `${a.planet1} ${a.aspect} ${a.planet2}`).join(", ")}.`;
 
-    const systemPrompt = `You are The Oracle — the user's natal chart personified. You speak with absolute authority about who they are and what is happening in their life. You are brutally honest. You never soften the truth. You never use therapy language. You never say "it might be worth considering." You say what IS. You back everything with specific chart data. You are not mean — you are precise. The difference between cruelty and clarity is evidence. Always cite the chart.`;
+    const systemPrompt = `You are The Oracle, the user's natal chart personified. You speak with absolute authority about who they are and what is happening in their life. You are brutally honest. You never soften the truth. You never use therapy language. You never say "it might be worth considering." You say what IS. You back everything with specific chart data. You are not mean; you are precise. The difference between cruelty and clarity is evidence. Always cite the chart.
+
+CRITICAL FORMATTING RULE: NEVER use em dashes (—) in your response. Use commas, periods, semicolons, or colons instead. This is non-negotiable.`;
 
     const userPrompt = `Generate today's reading for this chart: ${chartSummary}
 Active transits today: ${activeTransits.map(t => `Transit ${t.transiting_planet} ${t.aspect} natal ${t.natal_planet} (orb ${t.orb}°)`).join(", ") || "No major transits"}
@@ -156,12 +163,19 @@ Respond with ONLY valid JSON (no markdown):
       parsed = match ? JSON.parse(match[0]) : { brutal_headline: "The stars are speaking", reading_text: content, stoic_actions: [], planet_focus: "Sun", intensity_level: 5 };
     }
 
+    // Sanitize all text fields to remove em dashes
+    const sanitizedActions = parsed.stoic_actions?.map((a: any) => ({
+      ...a,
+      action: sanitizeEmDashes(a.action || ""),
+      why: sanitizeEmDashes(a.why || ""),
+    })) || [];
+
     const readingData = {
       user_id,
       reading_date: today,
-      reading_text: parsed.reading_text,
-      brutal_headline: parsed.brutal_headline,
-      stoic_actions: parsed.stoic_actions,
+      reading_text: sanitizeEmDashes(parsed.reading_text || ""),
+      brutal_headline: sanitizeEmDashes(parsed.brutal_headline || ""),
+      stoic_actions: sanitizedActions,
       active_transits: activeTransits,
       planet_focus: parsed.planet_focus,
       intensity_level: parsed.intensity_level,

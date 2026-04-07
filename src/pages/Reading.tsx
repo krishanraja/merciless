@@ -5,6 +5,7 @@ import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
 import StoicActionCard from '../components/StoicActionCard'
 import ShareCard from '../components/ShareCard'
+import SignBadge from '../components/SignBadge'
 import { getIntensityLabel } from '../lib/astrology'
 
 const NAV_LINKS = [
@@ -63,13 +64,22 @@ export default function Reading() {
         {chart && (
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-merciless-muted text-xs tracking-widest mb-1">{today.toUpperCase()}</div>
-              <div className="flex items-center gap-3 text-sm">
-                <span className="text-merciless-white">☉ {chart.sun_sign}</span>
+              <div className="text-merciless-muted text-xs tracking-widest mb-2">{today.toUpperCase()}</div>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-merciless-gold">☉</span>
+                  <SignBadge sign={chart.sun_sign} size="sm" variant="minimal" />
+                </div>
                 <span className="text-merciless-border">·</span>
-                <span className="text-merciless-white">☽ {chart.moon_sign}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-300">☽</span>
+                  <SignBadge sign={chart.moon_sign} size="sm" variant="minimal" />
+                </div>
                 <span className="text-merciless-border">·</span>
-                <span className="text-merciless-white">↑ {chart.rising_sign}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-purple-400">↑</span>
+                  <SignBadge sign={chart.rising_sign} size="sm" variant="minimal" />
+                </div>
               </div>
             </div>
             {reading && intensityConfig && (
@@ -204,7 +214,7 @@ export default function Reading() {
             ) : (
               <div className="merciless-card p-8 text-center space-y-6" style={{ borderColor: 'rgba(245,166,35,0.2)' }}>
                 <div>
-                  <div className="text-xs tracking-widest text-merciless-muted mb-3">PRO — $4.99/mo</div>
+                  <div className="text-xs tracking-widest text-merciless-muted mb-3">PRO: $4.99/mo</div>
                   <h2 className="text-merciless-white font-bold text-xl mb-3">
                     The headline is free.<br />The truth costs $4.99.
                   </h2>
