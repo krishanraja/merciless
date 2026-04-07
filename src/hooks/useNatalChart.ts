@@ -76,8 +76,14 @@ export function useNatalChart() {
       setCalculating(true)
       setError(null)
       const { data: { session } } = await supabase.auth.getSession()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user?.id) {
+        throw new Error('User not authenticated')
+      }
+      
       const res = await supabase.functions.invoke('natal-chart', {
-        body: data,
+        body: { ...data, user_id: user.id },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })
       if (res.error) throw new Error(res.error.message)
