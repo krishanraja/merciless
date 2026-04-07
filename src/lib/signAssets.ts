@@ -156,16 +156,17 @@ export const ZODIAC_SIGNS: ZodiacSign[] = [
   'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
 ]
 
-export function getSignAsset(sign: string): SignAsset | null {
+export function getSignAsset(sign: string | null | undefined): SignAsset | null {
+  if (!sign) return null
   const normalized = sign.charAt(0).toUpperCase() + sign.slice(1).toLowerCase()
   return SIGN_ASSETS[normalized as ZodiacSign] || null
 }
 
-export function getSignEmoji(sign: string): string {
+export function getSignEmoji(sign: string | null | undefined): string {
   return getSignAsset(sign)?.emoji || '☉'
 }
 
-export function getSignImage(sign: string): string {
+export function getSignImage(sign: string | null | undefined): string {
   return getSignAsset(sign)?.image || '/signs/aries.png'
 }
 
