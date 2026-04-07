@@ -215,3 +215,136 @@ input:focus, textarea:focus {
   border-color: var(--color-gold) !important;
   box-shadow: 0 0 0 1px var(--color-gold);
 }
+
+/* ===== TRY ME DEMO SECTION ===== */
+
+/* Mic button glow animation */
+.mic-button-glow {
+  animation: micGlow 2s ease-in-out infinite;
+}
+
+@keyframes micGlow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(245, 166, 35, 0.2), 0 0 40px rgba(245, 166, 35, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(245, 166, 35, 0.4), 0 0 60px rgba(245, 166, 35, 0.2);
+  }
+}
+
+/* Oracle eye animation */
+.oracle-eye {
+  display: inline-block;
+  animation: oracleEye 1.5s ease-in-out infinite;
+}
+
+@keyframes oracleEye {
+  0%, 100% { 
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(1.1);
+    filter: brightness(1.3);
+  }
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Date input styling for dark mode */
+input[type="date"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.5) sepia(1) saturate(5) hue-rotate(10deg);
+}
+
+/* Share card container animation */
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.share-card-reveal {
+  animation: cardReveal 0.4s ease-out forwards;
+}
+
+/* Success state sparkle */
+@keyframes sparkle {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.sparkle-success {
+  animation: sparkle 0.6s ease-in-out;
+}
+
+/* Bounce animation for scroll indicator */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 2s ease-in-out infinite;
+}
+
+/* Recording pulse ring */
+@keyframes recordingPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.recording-pulse {
+  animation: recordingPulse 1s ease-out infinite;
+}
+
+/* Constellation loading animation */
+@keyframes constellation {
+  0% { opacity: 0.3; }
+  25% { opacity: 1; }
+  50% { opacity: 0.3; }
+  75% { opacity: 0.8; }
+  100% { opacity: 0.3; }
+}
+
+.constellation-dot {
+  animation: constellation 2s ease-in-out infinite;
+}
+
+.constellation-dot:nth-child(1) { animation-delay: 0s; }
+.constellation-dot:nth-child(2) { animation-delay: 0.3s; }
+.constellation-dot:nth-child(3) { animation-delay: 0.6s; }
+.constellation-dot:nth-child(4) { animation-delay: 0.9s; }
+.constellation-dot:nth-child(5) { animation-delay: 1.2s; }
