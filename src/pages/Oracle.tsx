@@ -90,7 +90,7 @@ export default function Oracle() {
                 disabled={upgrading}
                 className="w-full py-4 bg-merciless-violet text-white font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-violet-light transition-all disabled:opacity-50"
               >
-                {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE — $4.99/mo'}
+                {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE: $4.99/mo'}
               </button>
             </div>
           </div>

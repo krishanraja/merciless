@@ -65,7 +65,7 @@ export function useNatalChart() {
       if (chartData) setChart(chartData)
       if (bd) setBirthData(bd)
     } catch (err) {
-      // No chart yet — normal for new users
+      // No chart yet - normal for new users
     } finally {
       setLoading(false)
     }

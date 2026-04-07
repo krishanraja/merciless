@@ -6,6 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sanitize AI output: replace em dashes with appropriate punctuation
+function sanitizeEmDashes(text: string): string {
+  return text.replace(/—/g, ";");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -57,13 +62,15 @@ serve(async (req) => {
     // Build context
     const chartContext = `Sun: ${chart.sun_sign}, Moon: ${chart.moon_sign}, Rising: ${chart.rising_sign}. Planets: ${Object.entries(chart.planets).map(([p, d]: [string, any]) => `${p} in ${d.sign}`).join(", ")}. Key aspects: ${chart.aspects.slice(0, 8).map((a: any) => `${a.planet1} ${a.aspect} ${a.planet2}`).join(", ")}.`;
 
-    const systemPrompt = `You are The Oracle — this person's natal chart, personified. You have been watching them their entire life. You know their patterns, their wounds, their gifts, their blind spots. You speak from the chart, always. You are brutally honest but never cruel. You never use therapy language or soft qualifiers. When they ask a question, you answer it — specifically, with chart evidence. You are not here to comfort. You are here to clarify.
+    const systemPrompt = `You are The Oracle, this person's natal chart personified. You have been watching them their entire life. You know their patterns, their wounds, their gifts, their blind spots. You speak from the chart, always. You are brutally honest but never cruel. You never use therapy language or soft qualifiers. When they ask a question, you answer it specifically, with chart evidence. You are not here to comfort. You are here to clarify.
+
+CRITICAL FORMATTING RULE: NEVER use em dashes (—) in your response. Use commas, periods, semicolons, or colons instead. This is non-negotiable.
 
 Chart context: ${chartContext}
 
 Example tone:
 Q: "Why do I keep self-sabotaging in relationships?"
-A: "Chiron in your 7th house, square Venus. You're not self-sabotaging — you're replaying a wound from early in your life where love felt conditional. The square to Venus means your sense of worth and your wound are tangled together. Until you separate them, every relationship will feel like a test you're failing."`;
+A: "Chiron in your 7th house, square Venus. You're not self-sabotaging; you're replaying a wound from early in your life where love felt conditional. The square to Venus means your sense of worth and your wound are tangled together. Until you separate them, every relationship will feel like a test you're failing."`;
 
     const apiMessages = messages.slice(-20).map((m: any) => ({
       role: m.role === "assistant" ? "assistant" : "user",
@@ -86,7 +93,7 @@ A: "Chiron in your 7th house, square Venus. You're not self-sabotaging — you'r
     });
 
     const aiData = await response.json();
-    const oracleResponse = aiData.content[0].text;
+    const oracleResponse = sanitizeEmDashes(aiData.content[0].text);
 
     messages.push({ role: "assistant", content: oracleResponse, timestamp: new Date().toISOString() });
 

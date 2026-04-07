@@ -148,7 +148,7 @@ export default function Settings() {
                 disabled={upgrading}
                 className="w-full py-3.5 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50"
               >
-                {upgrading ? 'REDIRECTING...' : 'UPGRADE TO PRO — $4.99/mo'}
+                {upgrading ? 'REDIRECTING...' : 'UPGRADE TO PRO: $4.99/mo'}
               </button>
             </div>
           )}

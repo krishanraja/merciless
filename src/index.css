@@ -37,7 +37,7 @@ html, body {
   position: relative;
 }
 
-/* Landing page viewport lock — bulletproof no-scroll */
+/* Landing page viewport lock: bulletproof no-scroll */
 .landing-viewport {
   height: 100vh;
   height: 100dvh;
