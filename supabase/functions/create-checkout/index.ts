@@ -40,6 +40,9 @@ serve(async (req) => {
       customerId = customer.id;
     }
 
+    // NOTE: Currency is determined by the Stripe Price object (price_id).
+    // Ensure the price in your Stripe dashboard is set to USD, not GBP.
+    // If users see GBP at checkout, create a new USD price and update VITE_STRIPE_PRICE_ID.
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
