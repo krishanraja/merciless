@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import Landing from './pages/Landing'
+import AuthCallback from './pages/AuthCallback'
 import Onboarding from './pages/Onboarding'
 import Reading from './pages/Reading'
 import Oracle from './pages/Oracle'
@@ -45,6 +46,7 @@ export default function App() {
         <StarfieldBg />
         <Routes>
           <Route path="/" element={user ? <Navigate to="/reading" replace /> : <Landing />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/onboarding" element={
             <ProtectedRoute user={user}>
               <Onboarding />

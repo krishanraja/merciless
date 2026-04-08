@@ -43,9 +43,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
 
     try {
       if (mode === 'signup') {
-        const { error: err } = await supabase.auth.signUp({ email, password })
+        const redirectTo = `${window.location.origin}/auth/callback`
+        const { error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: redirectTo },
+        })
         if (err) throw err
-        setSuccess('Account created. Check your email to confirm, then sign in.')
+        setSuccess('Check your inbox — tap the link to unlock your reading.')
         setMode('signin')
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password })

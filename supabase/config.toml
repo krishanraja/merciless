@@ -22,15 +22,15 @@ port = 54324
 file_size_limit = "50MiB"
 
 [auth]
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["https://localhost:5173"]
+site_url = "https://merciless.app"
+additional_redirect_urls = ["http://localhost:5173", "https://merciless.app"]
 jwt_expiry = 3600
 enable_signup = true
 
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations = false
+enable_confirmations = true
 
 [functions.natal-chart]
 verify_jwt = false
