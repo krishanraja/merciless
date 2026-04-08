@@ -83,13 +83,22 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { user_id } = await req.json();
-
+    // Authenticate user from JWT
+    const authHeader = req.headers.get("Authorization")!;
+    const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
+    const user_id = user.id;
     const today = new Date().toISOString().split("T")[0];
 
     // Check for existing reading
@@ -112,6 +121,14 @@ serve(async (req) => {
       .single();
 
     if (chartError || !chart) throw new Error("No natal chart found. Complete onboarding first.");
+
+    // Check subscription status for free vs pro tier
+    const { data: sub } = await supabase
+      .from("user_subscriptions")
+      .select("status")
+      .eq("user_id", user_id)
+      .single();
+    const isPro = sub?.status === "active";
 
     const activeTransits = getTodayTransits(chart.planets, new Date());
 
@@ -186,7 +203,7 @@ Respond with ONLY valid JSON (no markdown):
         brutal_headline: parsed.brutal_headline,
         date: today,
       },
-      is_free_tier: false,
+      is_free_tier: !isPro,
     };
 
     const { data: saved, error: saveError } = await supabase

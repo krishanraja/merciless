@@ -19,25 +19,20 @@ export function getStripe() {
 }
 
 export async function createCheckoutSession(
-  userId: string,
-  email: string,
+  accessToken: string,
   successUrl: string,
   cancelUrl: string
 ): Promise<{ url: string } | null> {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
     const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        user_id: userId,
-        email,
-        price_id: MERCILESS_PRO_PRICE_ID,
         success_url: successUrl,
         cancel_url: cancelUrl,
       }),
@@ -55,13 +50,12 @@ export async function createCheckoutSession(
 }
 
 export async function redirectToCheckout(
-  userId: string,
-  email: string
+  accessToken: string
 ): Promise<void> {
   const successUrl = `${window.location.origin}/reading?upgraded=true`
   const cancelUrl = `${window.location.origin}/reading`
 
-  const session = await createCheckoutSession(userId, email, successUrl, cancelUrl)
+  const session = await createCheckoutSession(accessToken, successUrl, cancelUrl)
 
   if (session?.url) {
     window.location.href = session.url

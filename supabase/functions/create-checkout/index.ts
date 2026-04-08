@@ -11,17 +11,30 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { user_id, email, price_id, success_url, cancel_url } = await req.json();
+    // Authenticate user from JWT
+    const authHeader = req.headers.get("Authorization")!;
+    const token = authHeader.replace("Bearer ", "");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { success_url, cancel_url } = await req.json();
+    const user_id = user.id;
+    const email = user.email!;
+    const PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") || "price_1TJEo24w6vAdI2o57Rz8Cp3X";
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2024-06-20",
       httpClient: Stripe.createFetchHttpClient(),
     });
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     // Check for existing customer
     const { data: existingSub } = await supabase
@@ -46,13 +59,13 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
-      line_items: [{ price: price_id, quantity: 1 }],
+      line_items: [{ price: PRICE_ID, quantity: 1 }],
       mode: "subscription",
       success_url: success_url || `${req.headers.get("origin")}/reading?upgraded=true`,
       cancel_url: cancel_url || `${req.headers.get("origin")}/reading`,
       metadata: {
         user_id,
-        price_id,
+        price_id: PRICE_ID,
       },
     });
 

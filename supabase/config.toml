@@ -33,19 +33,19 @@ double_confirm_changes = true
 enable_confirmations = true
 
 [functions.natal-chart]
-verify_jwt = false
+verify_jwt = true
 
 [functions.daily-reading]
-verify_jwt = false
+verify_jwt = true
 
 [functions.oracle]
-verify_jwt = false
+verify_jwt = true
 
 [functions.stripe-webhook]
 verify_jwt = false
 
 [functions.create-checkout]
-verify_jwt = false
+verify_jwt = true
 
 [functions.transcribe-date]
 verify_jwt = false

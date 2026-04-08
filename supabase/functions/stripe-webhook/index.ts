@@ -26,13 +26,12 @@ serve(async (req) => {
 
   let event;
   try {
-    if (webhookSecret && webhookSecret !== "PLACEHOLDER_SET_AFTER_VERCEL_DEPLOY" && sig) {
-      event = await stripe.webhooks.constructEventAsync(body, sig!, webhookSecret);
-    } else {
-      event = JSON.parse(body);
+    if (!webhookSecret || !sig) {
+      return new Response("Webhook secret or signature missing", { status: 400 });
     }
+    event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
   } catch (err) {
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+    return new Response(`Webhook signature verification failed: ${err.message}`, { status: 400 });
   }
 
   try {
