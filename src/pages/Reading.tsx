@@ -6,14 +6,8 @@ import { useSubscription } from '../hooks/useSubscription'
 import StoicActionCard from '../components/StoicActionCard'
 import ShareCard from '../components/ShareCard'
 import SignBadge from '../components/SignBadge'
+import AppNav from '../components/AppNav'
 import { getIntensityLabel } from '../lib/astrology'
-
-const NAV_LINKS = [
-  { path: '/reading', label: 'READING' },
-  { path: '/chart', label: 'CHART' },
-  { path: '/oracle', label: 'ORACLE' },
-  { path: '/settings', label: 'SETTINGS' },
-]
 
 export default function Reading() {
   const navigate = useNavigate()
@@ -31,65 +25,39 @@ export default function Reading() {
   const intensityConfig = reading ? getIntensityLabel(reading.intensity_level) : null
 
   return (
-    <div className="relative z-10 min-h-screen">
-      <nav className="border-b border-merciless-border px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to="/reading">
-            <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-7 w-7" />
-          </Link>
-          <div className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((l) => (
-              <Link
-                key={l.path}
-                to={l.path}
-                className={`text-xs tracking-widest font-medium transition-colors ${
-                  l.path === '/reading' ? 'text-merciless-gold' : 'text-merciless-muted hover:text-merciless-gold'
-                }`}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </div>
-          <div className="md:hidden flex gap-4">
-            {NAV_LINKS.map((l) => (
-              <Link key={l.path} to={l.path} className="text-xs text-merciless-muted hover:text-merciless-gold transition-colors">
-                {l.label.slice(0, 1)}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </nav>
+    <div className={`relative z-10 ${!isPro ? 'reading-viewport-lock' : 'min-h-screen pb-16 md:pb-0'}`}>
+      <AppNav />
 
-      <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+      <main className="max-w-3xl mx-auto px-5 py-6 md:px-6 md:py-10 space-y-6 md:space-y-8">
         {chart && (
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-merciless-muted text-xs tracking-widest mb-2">{today.toUpperCase()}</div>
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-merciless-gold">☉</span>
-                  <SignBadge sign={chart.sun_sign} size="sm" variant="minimal" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-merciless-muted text-xs tracking-widest">{today.toUpperCase()}</div>
+              {reading && intensityConfig && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] tracking-widest text-merciless-muted">INTENSITY</span>
+                  <span className="text-xs font-bold" style={{ color: intensityConfig.color }}>
+                    {intensityConfig.label.toUpperCase()} · {reading.intensity_level}/10
+                  </span>
                 </div>
-                <span className="text-merciless-border">·</span>
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-sm flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] tracking-wider text-merciless-muted">Sun</span>
+                <SignBadge sign={chart.sun_sign} size="sm" variant="minimal" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] tracking-wider text-merciless-muted">Moon</span>
+                <SignBadge sign={chart.moon_sign} size="sm" variant="minimal" />
+              </div>
+              {chart.rising_sign && chart.rising_sign.toLowerCase() !== 'unknown' && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-gray-300">☽</span>
-                  <SignBadge sign={chart.moon_sign} size="sm" variant="minimal" />
-                </div>
-                <span className="text-merciless-border">·</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-purple-400">↑</span>
+                  <span className="text-[10px] tracking-wider text-merciless-muted">Rising</span>
                   <SignBadge sign={chart.rising_sign} size="sm" variant="minimal" />
                 </div>
-              </div>
+              )}
             </div>
-            {reading && intensityConfig && (
-              <div className="text-right">
-                <div className="text-xs tracking-widest text-merciless-muted mb-1">INTENSITY</div>
-                <div className="text-sm font-bold" style={{ color: intensityConfig.color }}>
-                  {intensityConfig.label.toUpperCase()} · {reading.intensity_level}/10
-                </div>
-              </div>
-            )}
           </div>
         )}
 

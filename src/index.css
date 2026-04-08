@@ -46,6 +46,21 @@ html, body {
   flex-direction: column;
 }
 
+/* Reading page viewport lock for free users */
+.reading-viewport-lock {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.reading-viewport-lock > main {
+  flex: 1;
+  overflow: hidden;
+  padding-bottom: 4rem;
+}
+
 /* Starfield background */
 .starfield-bg {
   position: fixed;
