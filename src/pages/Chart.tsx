@@ -3,16 +3,10 @@ import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
 import PlanetTable from '../components/PlanetTable'
 import SignBadge from '../components/SignBadge'
+import AppNav from '../components/AppNav'
 import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ELEMENT_EMOJIS, MODALITY_COLORS, MODALITY_DESCRIPTIONS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
 import { getSignAsset } from '../lib/signAssets'
 import type { ZodiacSign } from '../lib/astrology'
-
-const NAV_LINKS = [
-  { path: '/reading', label: 'READING' },
-  { path: '/chart', label: 'CHART' },
-  { path: '/oracle', label: 'ORACLE' },
-  { path: '/settings', label: 'SETTINGS' },
-]
 
 export default function Chart() {
   const { chart, birthData, loading } = useNatalChart()
@@ -30,34 +24,8 @@ export default function Chart() {
     : []
 
   return (
-    <div className="relative z-10 min-h-screen">
-      <nav className="border-b border-merciless-border px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to="/reading">
-            <img src="/merciless%20orange%20icon.png" alt="Merciless" className="h-7 w-7" />
-          </Link>
-          <div className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((l) => (
-              <Link
-                key={l.path}
-                to={l.path}
-                className={`text-xs tracking-widest font-medium transition-colors ${
-                  l.path === '/chart' ? 'text-merciless-gold' : 'text-merciless-muted hover:text-merciless-gold'
-                }`}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </div>
-          <div className="md:hidden flex gap-4">
-            {NAV_LINKS.map((l) => (
-              <Link key={l.path} to={l.path} className="text-xs text-merciless-muted hover:text-merciless-gold transition-colors">
-                {l.label.slice(0, 1)}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </nav>
+    <div className="relative z-10 min-h-screen pb-16 md:pb-0">
+      <AppNav />
 
       <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
         <div>
