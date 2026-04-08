@@ -15,12 +15,23 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { user_id, message, conversation_id } = await req.json();
-
+    // Authenticate user from JWT
+    const authHeader = req.headers.get("Authorization")!;
+    const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { message, conversation_id } = await req.json();
+    const user_id = user.id;
 
     // Check subscription
     const { data: sub } = await supabase
@@ -45,13 +56,14 @@ serve(async (req) => {
 
     if (!chart) throw new Error("No natal chart found");
 
-    // Load or create conversation
+    // Load or create conversation (verify ownership)
     let conversationData;
     if (conversation_id) {
       const { data } = await supabase
         .from("oracle_conversations")
         .select("*")
         .eq("id", conversation_id)
+        .eq("user_id", user_id)
         .single();
       conversationData = data;
     }
