@@ -42,8 +42,27 @@ serve(async (req) => {
     });
 
     if (!whisperResponse.ok) {
-      const error = await whisperResponse.text();
-      throw new Error(`Whisper API error: ${error}`);
+      const errorText = await whisperResponse.text();
+      console.error("Whisper API error:", whisperResponse.status, errorText);
+
+      // Parse OpenAI error for user-friendly message
+      let userMessage = "Voice transcription service is temporarily unavailable. Please use the date picker.";
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed?.error?.code === "insufficient_quota") {
+          userMessage = "Voice transcription is temporarily unavailable. Please use the date picker below.";
+        }
+      } catch { /* use default message */ }
+
+      return new Response(JSON.stringify({
+        success: false,
+        error: userMessage,
+        transcript: null,
+        parsed: null,
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const whisperData = await whisperResponse.json();
@@ -105,8 +124,17 @@ Today's date is ${new Date().toISOString().split('T')[0]}.`
     });
 
     if (!interpretResponse.ok) {
-      const error = await interpretResponse.text();
-      throw new Error(`GPT API error: ${error}`);
+      const errorText = await interpretResponse.text();
+      console.error("GPT API error:", interpretResponse.status, errorText);
+      return new Response(JSON.stringify({
+        success: false,
+        error: "Could not parse the date. Please use the date picker below.",
+        transcript,
+        parsed: null,
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const interpretData = await interpretResponse.json();

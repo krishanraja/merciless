@@ -149,9 +149,15 @@ Respond with ONLY valid JSON (no markdown):
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("Anthropic API error:", error);
-      throw new Error("Failed to generate reading");
+      const errorText = await response.text();
+      console.error("Anthropic API error:", response.status, errorText);
+      return new Response(JSON.stringify({
+        success: false,
+        error: "Reading generation is temporarily unavailable. Please try again later.",
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiData = await response.json();

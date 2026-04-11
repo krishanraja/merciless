@@ -133,7 +133,9 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
       )
 
       if (fnError) {
-        throw new Error(fnError.message)
+        // Supabase SDK returns generic message for non-2xx; prefer the actual error from the response body
+        const detail = (data as TranscriptionResponse | null)?.error
+        throw new Error(detail || fnError.message)
       }
 
       if (!data?.success || !data.parsed) {
@@ -164,7 +166,8 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
       )
 
       if (fnError) {
-        throw new Error(fnError.message)
+        const detail = (data as DemoReadingResponse | null)?.error
+        throw new Error(detail || fnError.message)
       }
 
       if (!data?.success) {
