@@ -118,7 +118,9 @@ export default function VoiceDateInput({ value, onChange }: VoiceDateInputProps)
       )
 
       if (fnError) {
-        throw new Error(fnError.message)
+        // Supabase SDK returns generic message for non-2xx; prefer the actual error from the response body
+        const detail = (data as TranscriptionResponse | null)?.error
+        throw new Error(detail || fnError.message)
       }
 
       if (!data?.success) {
