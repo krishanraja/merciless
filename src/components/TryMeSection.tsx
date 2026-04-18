@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, extractFunctionErrorMessage } from '../lib/supabase'
 import DemoResultCard from './DemoResultCard'
 
 type DemoState = 'idle' | 'recording' | 'transcribing' | 'generating' | 'result' | 'error'
@@ -133,9 +133,7 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
       )
 
       if (fnError) {
-        // Supabase SDK returns generic message for non-2xx; prefer the actual error from the response body
-        const detail = (data as TranscriptionResponse | null)?.error
-        throw new Error(detail || fnError.message)
+        throw new Error(await extractFunctionErrorMessage(fnError, 'Voice transcription is temporarily unavailable. Use the date picker below.'))
       }
 
       if (!data?.success || !data.parsed) {
@@ -166,8 +164,7 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
       )
 
       if (fnError) {
-        const detail = (data as DemoReadingResponse | null)?.error
-        throw new Error(detail || fnError.message)
+        throw new Error(await extractFunctionErrorMessage(fnError, 'Failed to generate reading. Please try again.'))
       }
 
       if (!data?.success) {
