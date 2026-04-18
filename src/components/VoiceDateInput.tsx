@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, extractFunctionErrorMessage } from '../lib/supabase'
 
 interface ParsedDate {
   iso: string
@@ -118,9 +118,7 @@ export default function VoiceDateInput({ value, onChange }: VoiceDateInputProps)
       )
 
       if (fnError) {
-        // Supabase SDK returns generic message for non-2xx; prefer the actual error from the response body
-        const detail = (data as TranscriptionResponse | null)?.error
-        throw new Error(detail || fnError.message)
+        throw new Error(await extractFunctionErrorMessage(fnError, 'Voice transcription is temporarily unavailable. Please use the date picker.'))
       }
 
       if (!data?.success) {

@@ -10,6 +10,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// Supabase's functions.invoke returns a FunctionsHttpError with the generic
+// message "Edge Function returned a non-2xx status code" and leaves `data`
+// null. The real body lives on the underlying Response attached as `context`.
+export async function extractFunctionErrorMessage(
+  fnError: unknown,
+  fallback = 'Something went wrong. Please try again.'
+): Promise<string> {
+  const err = fnError as { context?: unknown; message?: string } | null
+  const response = err?.context
+  if (response instanceof Response) {
+    try {
+      const body = await response.clone().json()
+      if (body && typeof body.error === 'string' && body.error.trim()) {
+        return body.error
+      }
+    } catch { /* body wasn't JSON, try text */ }
+    try {
+      const text = (await response.clone().text()).trim()
+      if (text) return text
+    } catch { /* ignore */ }
+  }
+  return err?.message || fallback
+}
+
 // Auth helpers
 export async function signInWithEmail(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
