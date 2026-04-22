@@ -8,10 +8,10 @@ export default function Oracle() {
   const { isPro, upgradeToPro, upgrading } = useSubscription()
 
   return (
-    <div className="relative z-10 min-h-screen flex flex-col pb-16 md:pb-0">
+    <div className={`relative z-10 ${!isPro ? 'reading-viewport-lock' : 'min-h-screen flex flex-col pb-16 md:pb-0'}`}>
       <AppNav />
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-8 flex flex-col" style={{ minHeight: 'calc(100vh - 65px)' }}>
+      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-8 flex flex-col">
         <div className="flex items-center justify-between mb-6 flex-shrink-0">
           <div>
             <h1 className="text-2xl font-bold text-merciless-white">The Oracle</h1>
@@ -52,13 +52,16 @@ export default function Oracle() {
                 ))}
               </div>
 
-              <button
-                onClick={upgradeToPro}
-                disabled={upgrading}
-                className="w-full py-4 bg-merciless-violet text-white font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-violet-light transition-all disabled:opacity-50"
-              >
-                {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE: $4.99/mo'}
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={upgradeToPro}
+                  disabled={upgrading}
+                  className="w-full px-6 py-4 bg-merciless-violet text-white font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-violet-light transition-all disabled:opacity-50"
+                >
+                  {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE'}
+                </button>
+                <div className="text-merciless-muted text-xs">$4.99/mo · cancel anytime</div>
+              </div>
             </div>
           </div>
         ) : (
