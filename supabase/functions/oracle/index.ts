@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callLLM, type LLMMessage } from "../_shared/llm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -84,28 +85,28 @@ Example tone:
 Q: "Why do I keep self-sabotaging in relationships?"
 A: "Chiron in your 7th house, square Venus. You're not self-sabotaging; you're replaying a wound from early in your life where love felt conditional. The square to Venus means your sense of worth and your wound are tangled together. Until you separate them, every relationship will feel like a test you're failing."`;
 
-    const apiMessages = messages.slice(-20).map((m: any) => ({
+    const apiMessages: LLMMessage[] = messages.slice(-20).map((m: any) => ({
       role: m.role === "assistant" ? "assistant" : "user",
       content: m.content,
     }));
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 512,
+    let oracleResponse: string;
+    try {
+      const result = await callLLM({
         system: systemPrompt,
         messages: apiMessages,
-      }),
-    });
-
-    const aiData = await response.json();
-    const oracleResponse = sanitizeEmDashes(aiData.content[0].text);
+        maxTokens: 512,
+      });
+      oracleResponse = sanitizeEmDashes(result.text);
+    } catch (err) {
+      console.error("LLM error (oracle):", err);
+      return new Response(JSON.stringify({
+        error: "The Oracle is temporarily unavailable. Please try again later.",
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     messages.push({ role: "assistant", content: oracleResponse, timestamp: new Date().toISOString() });
 
