@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callLLM } from "../_shared/llm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -154,23 +155,23 @@ Respond with ONLY valid JSON (no markdown):
   "intensity_level": 7
 }`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1024,
+    let content: string;
+    try {
+      const result = await callLLM({
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
-
-    const aiData = await response.json();
-    const content = aiData.content[0].text;
+        maxTokens: 1024,
+      });
+      content = result.text;
+    } catch (err) {
+      console.error("LLM error (daily-reading):", err);
+      return new Response(JSON.stringify({
+        error: "Reading generation is temporarily unavailable. Please try again later.",
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     let parsed;
     try {

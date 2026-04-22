@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, extractFunctionErrorMessage } from '../lib/supabase'
 
 export interface DailyReadingData {
   id: string
@@ -72,7 +72,14 @@ export function useDailyReading() {
         body: { user_id: user.id },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })
-      if (res.error) throw new Error(res.error.message)
+      if (res.error) {
+        throw new Error(
+          await extractFunctionErrorMessage(
+            res.error,
+            'Reading generation is temporarily unavailable. Please try again later.'
+          )
+        )
+      }
       setReading(res.data)
     } catch (err: any) {
       setError(err.message || 'Failed to generate reading')
