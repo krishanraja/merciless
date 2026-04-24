@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getSignAsset, type ZodiacSign } from '../lib/signAssets'
+import { getSignAsset } from '../lib/signAssets'
 
 type BadgeSize = 'sm' | 'md' | 'lg' | 'xl'
 type BadgeVariant = 'default' | 'glow' | 'minimal' | 'card'

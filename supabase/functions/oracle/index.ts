@@ -85,10 +85,13 @@ Example tone:
 Q: "Why do I keep self-sabotaging in relationships?"
 A: "Chiron in your 7th house, square Venus. You're not self-sabotaging; you're replaying a wound from early in your life where love felt conditional. The square to Venus means your sense of worth and your wound are tangled together. Until you separate them, every relationship will feel like a test you're failing."`;
 
-    const apiMessages: LLMMessage[] = messages.slice(-20).map((m: any) => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: m.content,
-    }));
+    const MAX_MSG_CHARS = 4000;
+    const apiMessages: LLMMessage[] = messages
+      .slice(-20)
+      .map((m: { role: string; content: string }) => ({
+        role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+        content: (m.content ?? "").slice(0, MAX_MSG_CHARS),
+      }));
 
     let oracleResponse: string;
     try {
@@ -130,7 +133,9 @@ A: "Chiron in your 7th house, square Venus. You're not self-sabotaging; you're r
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    console.error("[oracle] fatal:", error);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

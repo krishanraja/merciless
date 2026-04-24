@@ -2,9 +2,8 @@ import { Link } from 'react-router-dom'
 import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
 import PlanetTable from '../components/PlanetTable'
-import SignBadge from '../components/SignBadge'
 import AppNav from '../components/AppNav'
-import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ELEMENT_EMOJIS, MODALITY_COLORS, MODALITY_DESCRIPTIONS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
+import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ELEMENT_EMOJIS, MODALITY_COLORS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
 import { getSignAsset } from '../lib/signAssets'
 import type { ZodiacSign } from '../lib/astrology'
 
@@ -13,15 +12,16 @@ export default function Chart() {
   const { isPro, upgradeToPro, upgrading } = useSubscription()
 
   // Transform chart planets into PlanetTable format
-  const planetRows = chart
-    ? Object.entries(chart.planets).map(([planet, data]: [string, any], i) => ({
-        planet,
-        sign: data.sign,
-        house: chart.houses[i % 12]?.house || 1,
-        degree: data.degree,
-        retrograde: false,
-      }))
-    : []
+  const planetsRecord = chart
+    ? (chart.planets as Record<string, { sign: string; longitude: number; degree: number }>)
+    : {}
+  const planetRows = Object.entries(planetsRecord).map(([planet, data], i) => ({
+    planet,
+    sign: data.sign,
+    house: chart?.houses[i % 12]?.house ?? 1,
+    degree: data.degree,
+    retrograde: false,
+  }))
 
   return (
     <div className="relative z-10 min-h-screen pb-16 md:pb-0">
@@ -166,7 +166,7 @@ export default function Chart() {
               <div className="merciless-card p-6">
                 <div className="text-xs tracking-widest text-merciless-muted mb-4">KEY ASPECTS</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {chart.aspects.slice(0, 10).map((asp: any, i: number) => {
+                  {chart.aspects.slice(0, 10).map((asp, i) => {
                     const color = ASPECT_COLORS[asp.aspect] || '#F5A623'
                     const glyph = ASPECT_GLYPHS[asp.aspect] || '◦'
                     return (
@@ -175,9 +175,9 @@ export default function Chart() {
                         className="flex items-center gap-3 bg-merciless-black border border-merciless-border rounded-lg px-4 py-3 text-sm"
                       >
                         <span className="text-merciless-white font-medium">{asp.planet1}</span>
-                        <span className="font-mono" style={{ color }}>{glyph}</span>
+                        <span className="font-mono" aria-hidden="true" style={{ color }}>{glyph}</span>
                         <span className="text-merciless-white font-medium">{asp.planet2}</span>
-                        <span className="text-merciless-muted text-xs ml-auto">{asp.aspect} · {asp.orb}°</span>
+                        <span className="text-merciless-muted text-xs ml-auto">{asp.aspect} · {asp.orb.toFixed(1)}°</span>
                       </div>
                     )
                   })}
@@ -190,7 +190,7 @@ export default function Chart() {
               <div className="merciless-card p-6">
                 <div className="text-xs tracking-widest text-merciless-muted mb-4">HOUSE CUSPS</div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {chart.houses.map((house: any) => {
+                  {chart.houses.map((house) => {
                     const sign = house.sign as ZodiacSign
                     const element = SIGN_ELEMENTS[sign]
                     const modality = SIGN_MODALITIES[sign]

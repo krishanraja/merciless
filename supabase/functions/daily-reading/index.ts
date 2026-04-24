@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM } from "../_shared/llm.ts";
+import { DailyReadingLLMSchema, extractJsonObject } from "../_shared/schemas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,20 +174,27 @@ Respond with ONLY valid JSON (no markdown):
       });
     }
 
-    let parsed;
+    let parsed: import("../_shared/schemas.ts").DailyReadingLLM;
     try {
-      parsed = JSON.parse(content);
-    } catch {
-      const match = content.match(/\{[\s\S]*\}/);
-      parsed = match ? JSON.parse(match[0]) : { brutal_headline: "The stars are speaking", reading_text: content, stoic_actions: [], planet_focus: "Sun", intensity_level: 5 };
+      const rawJson = extractJsonObject(content);
+      parsed = DailyReadingLLMSchema.parse(rawJson);
+    } catch (schemaErr) {
+      console.error("LLM schema validation failed (daily-reading):", schemaErr, { content });
+      parsed = {
+        brutal_headline: "The stars are speaking",
+        reading_text: content.slice(0, 5000) || "Your reading could not be generated. Please try again.",
+        stoic_actions: [],
+        planet_focus: "Sun",
+        intensity_level: 5,
+      };
     }
 
     // Sanitize all text fields to remove em dashes
-    const sanitizedActions = parsed.stoic_actions?.map((a: any) => ({
-      ...a,
+    const sanitizedActions = parsed.stoic_actions.map((a) => ({
       action: sanitizeEmDashes(a.action || ""),
       why: sanitizeEmDashes(a.why || ""),
-    })) || [];
+      ...(a.difficulty ? { difficulty: a.difficulty } : {}),
+    }));
 
     const readingData = {
       user_id,
@@ -219,7 +227,9 @@ Respond with ONLY valid JSON (no markdown):
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    console.error("[daily-reading] fatal:", error);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

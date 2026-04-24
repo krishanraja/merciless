@@ -57,8 +57,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
         if (err) throw err
         navigate('/reading')
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
     } finally {
       setLoading(false)
     }

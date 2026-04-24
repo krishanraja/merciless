@@ -20,7 +20,13 @@ export interface DailyReadingData {
   }>
   planet_focus: string
   intensity_level: number
-  shareable_card_data?: any
+  shareable_card_data?: {
+    sun_sign: string
+    moon_sign: string
+    rising_sign: string
+    brutal_headline: string
+    date: string
+  }
   is_free_tier: boolean
 }
 
@@ -81,8 +87,8 @@ export function useDailyReading() {
         )
       }
       setReading(res.data)
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate reading')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to generate reading')
     } finally {
       setGenerating(false)
       setLoading(false)

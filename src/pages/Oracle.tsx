@@ -4,8 +4,13 @@ import OracleChat from '../components/OracleChat'
 import AppNav from '../components/AppNav'
 
 export default function Oracle() {
-  const { messages, loading, error, sendMessage, startNewConversation } = useOracle()
+  const { messages, loading, error, sendMessage, startNewConversation, clearError } = useOracle()
   const { isPro, upgradeToPro, upgrading } = useSubscription()
+
+  const handleSend = async (message: string) => {
+    if (error) clearError()
+    await sendMessage(message)
+  }
 
   return (
     <div className={`relative z-10 ${!isPro ? 'reading-viewport-lock' : 'min-h-screen flex flex-col pb-16 md:pb-0'}`}>
@@ -67,14 +72,25 @@ export default function Oracle() {
         ) : (
           <>
             {error && (
-              <div className="mb-4 text-merciless-danger text-sm bg-merciless-danger/10 border border-merciless-danger/20 rounded-lg px-4 py-3 flex-shrink-0">
-                {error}
+              <div
+                role="alert"
+                className="mb-4 text-merciless-danger text-sm bg-merciless-danger/10 border border-merciless-danger/20 rounded-lg px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0"
+              >
+                <span>{error}</span>
+                <button
+                  type="button"
+                  onClick={clearError}
+                  aria-label="Dismiss error"
+                  className="text-merciless-danger/70 hover:text-merciless-danger text-lg leading-none"
+                >
+                  &times;
+                </button>
               </div>
             )}
             <div className="flex-1 flex flex-col">
               <OracleChat
                 messages={messages}
-                onSend={sendMessage}
+                onSend={handleSend}
                 loading={loading}
               />
             </div>

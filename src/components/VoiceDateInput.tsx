@@ -89,8 +89,8 @@ export default function VoiceDateInput({ value, onChange }: VoiceDateInputProps)
         }
       }, 5000)
 
-    } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
         setError('Microphone access denied. Please enable it in your browser settings.')
       } else {
         setError('Could not access microphone. Please try again.')
@@ -131,8 +131,8 @@ export default function VoiceDateInput({ value, onChange }: VoiceDateInputProps)
       setParsedDate(data.parsed)
       setState('confirming')
 
-    } catch (err: any) {
-      setError(err.message || 'Failed to process audio. Please try again.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to process audio. Please try again.')
       setState('idle')
     }
   }

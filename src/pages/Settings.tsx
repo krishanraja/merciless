@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useSubscription } from '../hooks/useSubscription'
 import { useNatalChart } from '../hooks/useNatalChart'
@@ -10,7 +11,7 @@ export default function Settings() {
   const { subscription, isPro, upgradeToPro, upgrading } = useSubscription()
   const { birthData } = useNatalChart()
   const [signingOut, setSigningOut] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user))

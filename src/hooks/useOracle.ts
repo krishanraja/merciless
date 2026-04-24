@@ -73,8 +73,8 @@ export function useOracle() {
       }
       setMessages((prev) => [...prev, assistantMsg])
       if (res.data.conversation_id) setConversationId(res.data.conversation_id)
-    } catch (err: any) {
-      setError(err.message || 'Oracle is unavailable')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Oracle is unavailable')
       // Remove optimistic user message on error
       setMessages((prev) => prev.slice(0, -1))
     } finally {
@@ -85,7 +85,10 @@ export function useOracle() {
   const startNewConversation = () => {
     setMessages([])
     setConversationId(undefined)
+    setError(null)
   }
 
-  return { messages, conversationId, loading, error, sendMessage, startNewConversation }
+  const clearError = () => setError(null)
+
+  return { messages, conversationId, loading, error, sendMessage, startNewConversation, clearError }
 }

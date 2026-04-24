@@ -90,8 +90,8 @@ export function useNatalChart() {
       setChart(res.data)
       await loadChart()
       return res.data
-    } catch (err: any) {
-      setError(err.message || 'Failed to calculate chart')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to calculate chart')
       throw err
     } finally {
       setCalculating(false)

@@ -66,9 +66,11 @@ export function useGeocoding() {
 
         const data: GeocodingResult[] = await response.json()
         setResults(data)
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          setError(err.message || 'Failed to search locations')
+      } catch (err: unknown) {
+        const isAbort =
+          err instanceof DOMException && err.name === 'AbortError'
+        if (!isAbort) {
+          setError(err instanceof Error ? err.message : 'Failed to search locations')
           setResults([])
         }
       } finally {

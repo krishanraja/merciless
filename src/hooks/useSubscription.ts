@@ -51,7 +51,7 @@ export function useSubscription() {
       if (session?.url) {
         window.location.href = session.url
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upgrade failed:', err)
     } finally {
       setUpgrading(false)

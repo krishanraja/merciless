@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { callLLM } from "../_shared/llm.ts";
 
 const corsHeaders = {
@@ -6,31 +7,68 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simple in-memory rate limiting (resets on function cold start)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 10; // requests per hour
-const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in ms
+const PER_FP_LIMIT = 10;            // requests per hour per fingerprint
+const PER_FP_WINDOW_SECONDS = 3600; // 1 hour
+const GLOBAL_DAILY_LIMIT = 2000;    // ceiling on total free demo LLM calls / UTC day
 
 // Sanitize AI output: replace em dashes with appropriate punctuation
 function sanitizeEmDashes(text: string): string {
   return text.replace(/—/g, ";");
 }
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip);
-  
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return false;
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function fingerprintFromRequest(req: Request): string {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("cf-connecting-ip") ||
+    "unknown";
+  const ua = req.headers.get("user-agent") ?? "unknown";
+  return `${ip}|${ua}`;
+}
+
+interface RateLimitClient {
+  rpc(
+    fn: "demo_rate_limit_bump" | "demo_global_budget_bump",
+    args?: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
+async function checkRateLimits(
+  client: RateLimitClient,
+  fingerprint: string,
+): Promise<{ blocked: boolean; reason?: string }> {
+  // Fingerprint-level bump (atomic in Postgres)
+  const { data: fpCount, error: fpErr } = await client.rpc(
+    "demo_rate_limit_bump",
+    { p_fingerprint: fingerprint, p_window_seconds: PER_FP_WINDOW_SECONDS },
+  );
+  if (fpErr) {
+    // Fail closed on DB error — better to show an error than run up LLM bills
+    return { blocked: true, reason: `rate-limit check failed: ${fpErr.message}` };
   }
-  
-  if (record.count >= RATE_LIMIT) {
-    return true;
+  if (typeof fpCount === "number" && fpCount > PER_FP_LIMIT) {
+    return { blocked: true, reason: "per-fingerprint hourly limit reached" };
   }
-  
-  record.count++;
-  return false;
+
+  // Global daily budget bump
+  const { data: globalCount, error: globalErr } = await client.rpc(
+    "demo_global_budget_bump",
+  );
+  if (globalErr) {
+    return { blocked: true, reason: `global budget check failed: ${globalErr.message}` };
+  }
+  if (typeof globalCount === "number" && globalCount > GLOBAL_DAILY_LIMIT) {
+    return { blocked: true, reason: "daily demo budget reached" };
+  }
+
+  return { blocked: false };
 }
 
 function getSunSign(month: number, day: number): string {
@@ -81,13 +119,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Rate limiting by IP
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || 
-               req.headers.get("cf-connecting-ip") || 
-               "unknown";
-    
-    if (isRateLimited(ip)) {
-      return new Response(JSON.stringify({ 
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+
+    const fingerprint = await sha256Hex(fingerprintFromRequest(req));
+    const rateCheck = await checkRateLimits(supabase as unknown as RateLimitClient, fingerprint);
+    if (rateCheck.blocked) {
+      console.warn(`[demo-reading] blocked: ${rateCheck.reason}`);
+      return new Response(JSON.stringify({
         error: "Too many requests. Please try again later.",
         success: false,
       }), {

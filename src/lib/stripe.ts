@@ -21,7 +21,6 @@ if (
   stripePublishableKey.startsWith('pk_live_') &&
   !/(^|\.)merciless\.app$/.test(window.location.hostname)
 ) {
-  // eslint-disable-next-line no-console
   console.warn(
     '[stripe] Live publishable key detected on non-production host ' +
     `(${window.location.hostname}). Use a pk_test_* key locally.`
