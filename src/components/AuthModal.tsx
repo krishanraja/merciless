@@ -81,8 +81,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
       >
         {/* Close button */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-merciless-muted hover:text-merciless-white transition-colors text-xl leading-none"
+          aria-label="Close sign-in dialog"
+          className="absolute top-4 right-4 text-merciless-muted hover:text-merciless-white transition-colors text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-merciless-gold rounded"
         >
           &times;
         </button>
@@ -137,7 +139,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50 animate-pulse-gold"
+            aria-busy={loading}
+            className="w-full py-3.5 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50 animate-pulse-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-merciless-gold focus-visible:ring-offset-2 focus-visible:ring-offset-merciless-black"
           >
             {loading ? 'LOADING...' : mode === 'signup' ? 'START FOR FREE' : 'SIGN IN'}
           </button>

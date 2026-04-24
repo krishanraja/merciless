@@ -3,6 +3,8 @@
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const OPENAI_MODEL = "gpt-4o-mini";
+const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_ATTEMPTS = 2;
 
 export interface LLMMessage {
   role: "user" | "assistant";
@@ -21,6 +23,26 @@ export interface LLMCallOptions {
   temperature?: number;
 }
 
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const msg = (err as Error).message ?? String(err);
+      // Don't retry 4xx auth/quota errors
+      if (/\b4\d\d\b/.test(msg) && !/\b408\b|\b429\b/.test(msg)) throw err;
+      if (attempt < MAX_ATTEMPTS) {
+        const backoff = 500 * attempt;
+        console.warn(`${label} attempt ${attempt} failed (${msg}); retrying in ${backoff}ms`);
+        await new Promise((r) => setTimeout(r, backoff));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export async function callLLM(opts: LLMCallOptions): Promise<LLMResult> {
   const { system, messages, maxTokens, temperature = 0.9 } = opts;
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
@@ -29,7 +51,10 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResult> {
   let geminiError: string | undefined;
   if (geminiKey) {
     try {
-      const text = await callGemini({ system, messages, maxTokens, temperature, apiKey: geminiKey });
+      const text = await withRetry(
+        () => callGemini({ system, messages, maxTokens, temperature, apiKey: geminiKey }),
+        "Gemini",
+      );
       return { text, provider: "gemini" };
     } catch (err) {
       geminiError = (err as Error).message;
@@ -46,7 +71,10 @@ export async function callLLM(opts: LLMCallOptions): Promise<LLMResult> {
   }
 
   try {
-    const text = await callOpenAI({ system, messages, maxTokens, temperature, apiKey: openaiKey });
+    const text = await withRetry(
+      () => callOpenAI({ system, messages, maxTokens, temperature, apiKey: openaiKey }),
+      "OpenAI",
+    );
     return { text, provider: "openai" };
   } catch (err) {
     const openaiError = (err as Error).message;
@@ -82,6 +110,7 @@ async function callGemini(opts: ProviderCallOptions): Promise<string> {
         temperature,
       },
     }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -113,6 +142,7 @@ async function callOpenAI(opts: ProviderCallOptions): Promise<string> {
       max_tokens: maxTokens,
       temperature,
     }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text();

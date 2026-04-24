@@ -236,7 +236,18 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
             type="button"
             onClick={toggleRecording}
             disabled={state === 'transcribing' || state === 'generating'}
-            className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all ${
+            aria-label={
+              state === 'recording'
+                ? 'Stop recording birth date'
+                : state === 'transcribing'
+                ? 'Transcribing your voice'
+                : state === 'generating'
+                ? 'Generating reading'
+                : 'Start voice input for birth date'
+            }
+            aria-busy={state === 'transcribing' || state === 'generating'}
+            aria-pressed={state === 'recording'}
+            className={`relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-merciless-gold focus-visible:ring-offset-2 focus-visible:ring-offset-merciless-card ${
               state === 'recording'
                 ? 'bg-red-500 text-white scale-110'
                 : state === 'transcribing' || state === 'generating'

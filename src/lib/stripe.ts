@@ -1,10 +1,35 @@
 /// <reference types="vite/client" />
 import { loadStripe } from '@stripe/stripe-js'
 
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string
+function requireEnv(key: 'VITE_STRIPE_PUBLISHABLE_KEY' | 'VITE_STRIPE_PRICE_ID'): string {
+  const value = import.meta.env[key] as string | undefined
+  if (!value || typeof value !== 'string' || value.trim() === '') {
+    throw new Error(
+      `Missing required environment variable: ${key}. ` +
+      `Set it in .env.local (dev) or Vercel project env vars (deploy).`
+    )
+  }
+  return value
+}
+
+const stripePublishableKey = requireEnv('VITE_STRIPE_PUBLISHABLE_KEY')
+
+// Warn loudly when live keys are used outside production — prevents real
+// charges from typos in local dev. pk_live_* + non-prod host = red flag.
+if (
+  typeof window !== 'undefined' &&
+  stripePublishableKey.startsWith('pk_live_') &&
+  !/(^|\.)merciless\.app$/.test(window.location.hostname)
+) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[stripe] Live publishable key detected on non-production host ' +
+    `(${window.location.hostname}). Use a pk_test_* key locally.`
+  )
+}
 
 // Merciless Pro price ID: set via VITE_STRIPE_PRICE_ID env var
-export const MERCILESS_PRO_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID as string
+export const MERCILESS_PRO_PRICE_ID = requireEnv('VITE_STRIPE_PRICE_ID')
 
 export const MERCILESS_PRO_PRICE_CENTS = 499
 export const MERCILESS_PRO_PRICE_DISPLAY = '$4.99/mo'

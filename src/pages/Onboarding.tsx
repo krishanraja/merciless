@@ -21,13 +21,16 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (locationQuery.length >= 2) {
-      searchLocation(locationQuery)
-      setShowLocationDropdown(true)
-    } else {
+    if (locationQuery.length < 2) {
       clearLocationResults()
       setShowLocationDropdown(false)
+      return
     }
+    const handle = setTimeout(() => {
+      searchLocation(locationQuery)
+      setShowLocationDropdown(true)
+    }, 300)
+    return () => clearTimeout(handle)
   }, [locationQuery, searchLocation, clearLocationResults])
 
   const handleSelectLocation = (result: GeocodingResult) => {
@@ -60,8 +63,9 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     setStep(3)
     setError(null)
+    const CHART_TIMEOUT_MS = 45_000
     try {
-      const chart = await calculateChart({
+      const chartPromise = calculateChart({
         birth_date: birthDate,
         birth_time: unknownTime ? undefined : birthTime,
         birth_location: birthLocation,
@@ -69,14 +73,21 @@ export default function Onboarding() {
         longitude,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('This is taking longer than expected. Please try again.')),
+          CHART_TIMEOUT_MS,
+        ),
+      )
+      const chart = await Promise.race([chartPromise, timeoutPromise])
       if (chart) {
         navigate('/reading')
       } else {
         setError('Failed to calculate your chart. Please try again.')
         setStep(2)
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to calculate your chart.')
       setStep(2)
     }
   }
@@ -169,16 +180,24 @@ export default function Onboarding() {
                 )}
 
                 <label className="flex items-center gap-3 cursor-pointer group">
-                  <div
-                    onClick={() => setUnknownTime(!unknownTime)}
-                    className={`w-5 h-5 rounded border transition-all flex items-center justify-center ${
-                      unknownTime
-                        ? 'bg-merciless-gold border-merciless-gold'
-                        : 'bg-merciless-black border-merciless-border group-hover:border-merciless-gold/40'
-                    }`}
-                  >
-                    {unknownTime && <span className="text-merciless-black text-xs">✓</span>}
-                  </div>
+                  <span className="relative inline-flex">
+                    <input
+                      type="checkbox"
+                      checked={unknownTime}
+                      onChange={(e) => setUnknownTime(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={`w-5 h-5 rounded border transition-all flex items-center justify-center peer-focus-visible:ring-2 peer-focus-visible:ring-merciless-gold peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-merciless-black ${
+                        unknownTime
+                          ? 'bg-merciless-gold border-merciless-gold'
+                          : 'bg-merciless-black border-merciless-border group-hover:border-merciless-gold/40'
+                      }`}
+                    >
+                      {unknownTime && <span className="text-merciless-black text-xs">✓</span>}
+                    </span>
+                  </span>
                   <span className="text-merciless-muted text-sm">I don't know my birth time</span>
                 </label>
                 {unknownTime && (

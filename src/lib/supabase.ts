@@ -1,12 +1,19 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+function requireEnv(key: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string {
+  const value = import.meta.env[key] as string | undefined
+  if (!value || typeof value !== 'string' || value.trim() === '') {
+    throw new Error(
+      `Missing required environment variable: ${key}. ` +
+      `Set it in .env.local (dev) or Vercel project env vars (deploy).`
+    )
+  }
+  return value
 }
+
+const supabaseUrl = requireEnv('VITE_SUPABASE_URL')
+const supabaseAnonKey = requireEnv('VITE_SUPABASE_ANON_KEY')
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
