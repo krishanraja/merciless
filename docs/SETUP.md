@@ -1,23 +1,26 @@
 # Merciless — Complete Setup Guide
 
-This document contains everything needed to replicate the entire Merciless stack from scratch.
+Reproduce the entire Merciless stack from scratch. Follow top-to-bottom.
 
 ---
 
 ## Prerequisites
 
-- Node.js 20+ (LTS)
+- Node.js 20 LTS or newer
 - npm 9+
 - Supabase CLI (`npm install -g supabase`)
 - Vercel CLI (`npm install -g vercel`)
-- Stripe CLI (optional, for local webhook testing)
-- A Stripe account
-- An Anthropic API key (Claude access)
-- A domain (merciless.app or similar)
+- Stripe CLI (optional, for local webhook forwarding)
+- Accounts:
+  - Supabase
+  - Stripe (live + test)
+  - Google AI Studio (Gemini API key)
+  - OpenAI (API key — used for fallback LLM, Whisper transcription, and GPT-4o-mini date parsing)
+- A domain (e.g. `merciless.app`)
 
 ---
 
-## 1. Repository Setup
+## 1. Repository
 
 ```bash
 git clone https://github.com/krishanraja/merciless.git
@@ -27,267 +30,328 @@ npm install
 
 ---
 
-## 2. Supabase Setup
+## 2. Supabase
 
-### 2.1 Create Project
+### 2.1 Create project
 
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Note your **Project Ref**, **URL**, **Anon Key**, and **Service Role Key** from Settings > API
+1. Create a new project at [supabase.com](https://supabase.com).
+2. Capture from **Settings → API**:
+   - Project Ref
+   - Project URL
+   - Anon (public) key
+   - Service Role key
+3. Capture from **Settings → Access Tokens**:
+   - A Personal Access Token (PAT) for CLI use.
 
-### 2.2 Apply Database Schema
+### 2.2 Apply migrations
 
-Run the migration SQL against your Supabase database:
+Two migrations live in `supabase/migrations/`:
+
+| File | Purpose |
+|---|---|
+| `20260406000000_initial_schema.sql` | Five user-owned tables + RLS policies (user_birth_data, natal_charts, daily_readings, oracle_conversations, user_subscriptions) |
+| `20260424120000_demo_rate_limit.sql` | Service-role-only `demo_rate_limit` and `demo_global_budget` tables + atomic `demo_rate_limit_bump` and `demo_global_budget_bump` RPCs |
+
+Apply via CLI:
 
 ```bash
-supabase login --token <YOUR_SUPABASE_PAT>
-supabase link --project-ref <YOUR_PROJECT_REF>
+supabase login --token <YOUR_PAT>
+supabase link --project-ref <PROJECT_REF>
 supabase db push
 ```
 
-Or manually execute `supabase/migrations/20260406000000_initial_schema.sql` in the Supabase SQL Editor.
+…or paste each `.sql` file into Supabase Studio's SQL Editor in order.
 
-This creates 5 tables with RLS:
+> If neither CLI option is available (e.g., no local CLI), apply via the Supabase Management API following the pattern in `~/.claude/projects/.../memory/reference_supabase_management_api.md`.
 
-| Table | Purpose |
-|-------|---------|
-| `user_birth_data` | Birth date, time, location, lat/lng, timezone |
-| `natal_charts` | Planets (JSONB), houses, aspects, sun/moon/rising signs |
-| `daily_readings` | AI reading, headline, stoic actions, transits, intensity |
-| `oracle_conversations` | Multi-turn Oracle message history |
-| `user_subscriptions` | Stripe customer/subscription IDs, status |
+### 2.3 Deploy edge functions
 
-### 2.3 Deploy Edge Functions
+All seven functions deploy with `--no-verify-jwt`. The auth-required functions verify the JWT internally; the demo/transcribe functions are intentionally anonymous (rate-limited at the DB layer).
 
 ```bash
-supabase functions deploy natal-chart --no-verify-jwt
-supabase functions deploy daily-reading --no-verify-jwt
-supabase functions deploy oracle --no-verify-jwt
-supabase functions deploy create-checkout --no-verify-jwt
-supabase functions deploy stripe-webhook --no-verify-jwt
+supabase functions deploy natal-chart      --no-verify-jwt --project-ref <PROJECT_REF>
+supabase functions deploy daily-reading    --no-verify-jwt --project-ref <PROJECT_REF>
+supabase functions deploy oracle           --no-verify-jwt --project-ref <PROJECT_REF>
+supabase functions deploy create-checkout  --no-verify-jwt --project-ref <PROJECT_REF>
+supabase functions deploy stripe-webhook   --no-verify-jwt --project-ref <PROJECT_REF>
+supabase functions deploy demo-reading     --no-verify-jwt --project-ref <PROJECT_REF>
+supabase functions deploy transcribe-date  --no-verify-jwt --project-ref <PROJECT_REF>
 ```
 
-### 2.4 Set Supabase Secrets
+The shared modules `supabase/functions/_shared/llm.ts` and `_shared/schemas.ts` are bundled automatically with each function that imports them.
+
+### 2.4 Set Supabase secrets
 
 ```bash
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-... --project-ref <PROJECT_REF>
-supabase secrets set STRIPE_SECRET_KEY=rk_live_... --project-ref <PROJECT_REF>
+supabase secrets set GEMINI_API_KEY=...        --project-ref <PROJECT_REF>
+supabase secrets set OPENAI_API_KEY=sk-...     --project-ref <PROJECT_REF>
+supabase secrets set STRIPE_SECRET_KEY=rk_live_...     --project-ref <PROJECT_REF>
 supabase secrets set STRIPE_PUBLISHABLE_KEY=pk_live_... --project-ref <PROJECT_REF>
-supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_... --project-ref <PROJECT_REF>
+supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...   --project-ref <PROJECT_REF>
+supabase secrets set STRIPE_PRICE_ID=price_...         --project-ref <PROJECT_REF>
 ```
 
-> **Note:** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are automatically available in edge functions.
+| Secret | Used by |
+|---|---|
+| `GEMINI_API_KEY` | `daily-reading`, `oracle`, `demo-reading` (primary LLM) |
+| `OPENAI_API_KEY` | Same (fallback LLM) + `transcribe-date` (Whisper + GPT-4o-mini) |
+| `STRIPE_SECRET_KEY` | `create-checkout`, `stripe-webhook` |
+| `STRIPE_PUBLISHABLE_KEY` | (optional, currently informational) |
+| `STRIPE_WEBHOOK_SECRET` | `stripe-webhook` |
+| `STRIPE_PRICE_ID` | `create-checkout` (falls back to a hardcoded value if absent) |
+| `SUPABASE_URL` | Auto-provided by Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Auto-provided by Supabase |
 
-### 2.5 Auth Configuration
+> If `GEMINI_API_KEY` is missing, the LLM helper goes straight to OpenAI. If both are missing, the function returns 503 with a helpful error.
 
-In Supabase Dashboard > Authentication > Settings:
-- **Site URL:** `https://merciless.app` (or your domain)
-- **Redirect URLs:** Add `https://merciless.app/*` and `http://localhost:5173/*`
-- **Email Auth:** Enabled (default)
-- **Email confirmations:** Enable for production, disable for development
+### 2.5 Auth configuration
+
+In **Authentication → URL Configuration**:
+
+- **Site URL:** `https://merciless.app`
+- **Redirect URLs:** add `https://merciless.app/auth/callback`, `https://merciless.app/*`, and `http://localhost:5173/*`.
+
+In **Authentication → Providers → Email**:
+
+- Enable **Email** provider.
+- Enable **Confirm email** for production.
+- Branded confirmation email template (Supabase Studio → Auth → Email Templates) — the project uses a custom branded template that links to `{{ .ConfirmationURL }}` which lands at `/auth/callback`.
+
+The frontend behavior is: confirmation email is sent only on signup (handled in `AuthModal.tsx` via `emailRedirectTo: ${origin}/auth/callback`); subsequent signins do not re-trigger confirmation.
 
 ---
 
-## 3. Stripe Setup
+## 3. Stripe
 
-### 3.1 Create Product and Price
+### 3.1 Product and price
 
-In Stripe Dashboard or via API:
+In Stripe Dashboard or via CLI:
 
-- **Product Name:** Merciless Pro
-- **Price:** $4.99/month (recurring)
-- Note the **Product ID** (`prod_...`) and **Price ID** (`price_...`)
+- **Product:** Merciless Pro
+- **Price:** $4.99 USD / month, recurring
+- Capture **Product ID** (`prod_...`) and **Price ID** (`price_...`).
 
-### 3.2 Create Webhook Endpoint
+> The Stripe Price object determines the displayed currency at checkout. Confirm USD. Customers seeing GBP indicates a wrong price ID.
 
-1. Go to Stripe Dashboard > Developers > Webhooks > Add endpoint
-2. **URL:** `https://<YOUR_SUPABASE_REF>.supabase.co/functions/v1/stripe-webhook`
-3. **Events to listen for:**
+### 3.2 Webhook endpoint
+
+1. **Developers → Webhooks → Add endpoint**.
+2. URL: `https://<PROJECT_REF>.supabase.co/functions/v1/stripe-webhook`
+3. Events:
    - `checkout.session.completed`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
-4. Copy the **Signing Secret** (`whsec_...`)
-5. Set it in Supabase:
+4. Capture signing secret (`whsec_...`) → set as `STRIPE_WEBHOOK_SECRET` in Supabase.
+5. Redeploy `stripe-webhook` after setting the secret:
    ```bash
-   supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_... --project-ref <PROJECT_REF>
-   ```
-6. Redeploy the webhook function:
-   ```bash
-   supabase functions deploy stripe-webhook --no-verify-jwt
+   supabase functions deploy stripe-webhook --no-verify-jwt --project-ref <PROJECT_REF>
    ```
 
-### 3.3 Stripe Keys
+### 3.3 Stripe key types in use
 
-You need:
-- **Publishable Key** (`pk_live_...`) — used in frontend
-- **Secret/Restricted Key** (`rk_live_...` or `sk_live_...`) — used in edge functions
-- **Webhook Signing Secret** (`whsec_...`) — used in stripe-webhook function
+| Key | Format | Where it lives |
+|---|---|---|
+| Publishable | `pk_live_...` | Vercel env (`VITE_STRIPE_PUBLISHABLE_KEY`) |
+| Secret/Restricted | `rk_live_...` or `sk_live_...` | Supabase secret (`STRIPE_SECRET_KEY`) |
+| Price ID | `price_...` | Vercel env + Supabase secret |
+| Webhook secret | `whsec_...` | Supabase secret |
 
 ---
 
-## 4. Environment Variables
+## 4. Environment variables
 
-### 4.1 Local Development
+### 4.1 Local development
 
-Create `.env.local` in the project root:
+Create `.env.local`:
 
 ```bash
-VITE_SUPABASE_URL=https://<YOUR_PROJECT_REF>.supabase.co
-VITE_SUPABASE_ANON_KEY=<YOUR_ANON_KEY>
+VITE_SUPABASE_URL=https://<PROJECT_REF>.supabase.co
+VITE_SUPABASE_ANON_KEY=<ANON_KEY>
 VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
 VITE_STRIPE_PRICE_ID=price_...
 ```
 
-### 4.2 Vercel Environment Variables
+> The client throws a clear error at startup if `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is missing — see `requireEnv` in `src/lib/supabase.ts`.
 
-Set these in Vercel Dashboard > Project Settings > Environment Variables (all environments):
+### 4.2 Vercel project env vars
+
+Set in **Project Settings → Environment Variables** for all environments (Preview + Production):
 
 | Variable | Value |
-|----------|-------|
-| `VITE_SUPABASE_URL` | `https://<REF>.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon key |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Your Stripe publishable key |
-| `VITE_STRIPE_PRICE_ID` | Your Stripe price ID |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://<PROJECT_REF>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `VITE_STRIPE_PRICE_ID` | Stripe price ID |
 
 ---
 
-## 5. Vercel Deployment
+## 5. Vercel
 
-### 5.1 Link Project
+### 5.1 Link & deploy
 
 ```bash
 vercel link
+vercel              # preview
+vercel --prod       # production
 ```
 
-### 5.2 Deploy
+Or just `git push origin main` — Vercel auto-deploys on every push to `main`.
 
-```bash
-# Preview deployment
-vercel
+### 5.2 Configuration (`vercel.json`)
 
-# Production deployment
-vercel --prod
-```
+The repo's `vercel.json` is preconfigured:
 
-### 5.3 Domain Configuration
+- Framework: `vite`. Build: `npm run build`. Output: `dist`.
+- `cleanUrls: true`, `trailingSlash: false`.
+- `www.merciless.app` → `merciless.app` 301 redirect.
+- Security headers: HSTS preload, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`.
+- Long-cache immutable on `/assets/*` and `/signs/*`.
+- SPA rewrite (excludes `/api/`, `/assets/`, `/signs/`, `sitemap.xml`, `robots.txt`).
 
-1. In Vercel Dashboard > Project > Settings > Domains
-2. Add your domain (e.g., `merciless.app`)
-3. Configure DNS:
-   - If using Vercel nameservers: Point domain nameservers to Vercel
-   - If using external DNS: Add the A record (`76.76.21.21`) and CNAME (`cname.vercel-dns.com`)
-4. Wait for DNS propagation and SSL certificate provisioning
+### 5.3 Domain
 
-### 5.4 Vercel Configuration
-
-The project uses `vercel.json` for SPA routing:
-
-```json
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
+1. **Settings → Domains** → add `merciless.app` and `www.merciless.app`.
+2. Either point nameservers to Vercel, or add `A 76.76.21.21` for apex and `CNAME cname.vercel-dns.com` for `www`.
+3. Wait for SSL provisioning.
 
 ---
 
-## 6. Supabase Edge Function Secrets Summary
+## 6. Secrets summary
 
-| Secret | Source | Used By |
-|--------|--------|---------|
-| `ANTHROPIC_API_KEY` | Anthropic Console | daily-reading, oracle |
-| `STRIPE_SECRET_KEY` | Stripe Dashboard | create-checkout, stripe-webhook |
-| `STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard | create-checkout |
-| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook Setup | stripe-webhook |
+| Secret | Source | Used by |
+|---|---|---|
+| `GEMINI_API_KEY` | Google AI Studio | `daily-reading`, `oracle`, `demo-reading` |
+| `OPENAI_API_KEY` | OpenAI | Same (fallback) + `transcribe-date` |
+| `STRIPE_SECRET_KEY` | Stripe Dashboard | `create-checkout`, `stripe-webhook` |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard | (informational) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook setup | `stripe-webhook` |
+| `STRIPE_PRICE_ID` | Stripe Price | `create-checkout` |
 | `SUPABASE_URL` | Auto-provided | All functions |
 | `SUPABASE_SERVICE_ROLE_KEY` | Auto-provided | All functions |
 
+Vercel client-side:
+
+| Variable | Used by |
+|---|---|
+| `VITE_SUPABASE_URL` | `src/lib/supabase.ts` |
+| `VITE_SUPABASE_ANON_KEY` | `src/lib/supabase.ts` |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/lib/stripe.ts` |
+| `VITE_STRIPE_PRICE_ID` | `src/lib/stripe.ts` |
+
 ---
 
-## 7. Testing Checklist
+## 7. Testing checklist
 
-### Auth Flow
-- [ ] Sign up with email/password
-- [ ] Receive confirmation email (if enabled)
-- [ ] Sign in successfully
-- [ ] Redirect to `/onboarding` on first login (no chart)
-- [ ] Redirect to `/reading` on subsequent logins
+### Auth
+
+- [ ] Sign up with email/password → confirmation email arrives with branded template.
+- [ ] Confirmation link lands on `/auth/callback`, then redirects into the app.
+- [ ] Subsequent sign-ins do not require email confirmation.
+- [ ] User without a chart → redirected to `/onboarding`.
+- [ ] Authenticated user on `/` → redirected to `/reading`.
+- [ ] Unexpected session loss shows the "Your session expired" toast.
+
+### Voice demo (landing)
+
+- [ ] Microphone permission prompt appears on first record.
+- [ ] Whisper transcription returns a transcript.
+- [ ] GPT-4o-mini returns a parsed date.
+- [ ] Brutal headline appears within ~5 seconds.
+- [ ] Re-running 11 times in an hour from the same fingerprint returns 429.
+- [ ] Manual date picker fallback works if mic is denied.
 
 ### Onboarding
-- [ ] Enter birth date (required)
-- [ ] Enter birth time (or check "unknown")
-- [ ] Enter birth location (required)
-- [ ] Optional lat/lng fields work
-- [ ] Chart calculation succeeds
-- [ ] Redirect to `/reading` after calculation
 
-### Daily Reading
-- [ ] Loading state shows while fetching/generating
-- [ ] Auto-generates if no reading exists for today
-- [ ] Headline displays for free users
-- [ ] Full reading + actions + transits display for pro users
-- [ ] Intensity badge shows correct color/label
-- [ ] Share card generates and downloads PNG
+- [ ] Voice date input transcribes and confirms.
+- [ ] Native date picker fallback works.
+- [ ] Birth time can be marked unknown.
+- [ ] Location autocomplete (Nominatim) returns city suggestions; selecting fills lat/lng.
+- [ ] Chart calculation succeeds within 45 s timeout.
+- [ ] Redirects to `/reading` on success.
 
-### Stripe Subscription
-- [ ] "Upgrade to Pro" button creates Stripe checkout session
-- [ ] Redirects to Stripe Checkout
-- [ ] After payment, webhook fires and updates `user_subscriptions`
-- [ ] User sees pro content on return
-- [ ] Subscription cancellation updates status
+### Daily reading
 
-### Oracle (Pro only)
-- [ ] Free users see upgrade gate
-- [ ] Pro users see chat interface
-- [ ] Example prompts populate input
-- [ ] Messages send and Oracle responds
-- [ ] Conversation history persists
-- [ ] New conversation button resets chat
+- [ ] Loading state while fetching/generating.
+- [ ] Headline displays for free users; intensity badge shows correct color.
+- [ ] Full reading + Stoic actions + transits display for Pro users.
+- [ ] Share card downloads as PNG (9:16, 2x scale).
+- [ ] No em dashes appear anywhere in generated content.
+- [ ] Refreshing the page does not regenerate the reading (idempotent).
 
-### Chart Viewer (Pro only)
-- [ ] Free users see upgrade gate
-- [ ] Pro users see Big Three, planets, aspects, houses
-- [ ] Planet table renders all 12 bodies
-- [ ] Aspects show with correct glyphs and colors
+### Stripe
+
+- [ ] "Upgrade to Pro" creates a Stripe Checkout session.
+- [ ] Checkout currency is **USD**.
+- [ ] After payment, webhook updates `user_subscriptions.status='active'`.
+- [ ] Returning user sees Pro content unlocked.
+- [ ] Cancelling subscription updates status; user keeps access until `current_period_end`.
+
+### Oracle
+
+- [ ] Free users see upgrade gate.
+- [ ] Pro users see chat UI; example prompts populate the input.
+- [ ] Messages send; Oracle responds within ~5 s.
+- [ ] Conversation history persists across page reloads.
+- [ ] Attempting to load another user's `conversation_id` returns nothing (ownership check).
+- [ ] No em dashes in any Oracle response.
+
+### Chart viewer
+
+- [ ] Free users see upgrade gate.
+- [ ] Pro users see Big Three, planets, aspects, houses.
+- [ ] PlanetTable renders all 12 bodies (10 planets + North Node + Chiron).
 
 ---
 
-## 8. Useful Commands
+## 8. Useful commands
 
 ```bash
-# Local dev
-npm run dev                  # Start dev server (localhost:5173)
-npm run build                # TypeScript check + Vite build
-npm run preview              # Preview production build
+# Local
+npm run dev                                # http://localhost:5173
+npm run build                              # tsc + vite build
+npm run preview                            # serve dist/
 
 # Supabase
 supabase login --token <PAT>
 supabase link --project-ref <REF>
-supabase functions deploy <name> --no-verify-jwt
-supabase secrets set KEY=value --project-ref <REF>
-supabase functions logs <name> --project-ref <REF>
-supabase db push             # Apply migrations
+supabase db push
+supabase functions deploy <name> --no-verify-jwt --project-ref <REF>
+supabase secrets set KEY=value             --project-ref <REF>
+supabase functions logs <name>             --project-ref <REF>
 
 # Vercel
-vercel                       # Preview deploy
-vercel --prod                # Production deploy
-vercel env ls                # List env vars
+vercel
+vercel --prod
+vercel env ls
+vercel logs --follow
 ```
 
 ---
 
 ## 9. Troubleshooting
 
-| Issue | Fix |
-|-------|-----|
-| "Missing Supabase environment variables" in console | Check `.env.local` has `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` |
-| Edge function returns 500 | Check `supabase functions logs <name>` for errors |
-| "No natal chart found" on reading page | User needs to complete onboarding first |
-| Stripe checkout doesn't redirect | Verify `STRIPE_SECRET_KEY` is set in Supabase secrets |
-| Webhook not updating subscription | Verify `STRIPE_WEBHOOK_SECRET` is set and endpoint is correct |
-| Oracle returns 403 | User doesn't have active subscription — check `user_subscriptions` table |
-| Domain shows "DNS configuration error" | Verify A/CNAME records in Vercel Domains settings |
-| Build fails on Vercel | Check that all `VITE_*` env vars are set in Vercel dashboard |
+| Symptom | Likely cause / fix |
+|---|---|
+| `Missing required environment variable: VITE_SUPABASE_URL` at app start | `.env.local` (or Vercel env) is missing the var; add and rebuild. |
+| Edge function returns 401 `Unauthorized` | The function expects a user JWT; calling with anon key only. Ensure caller is signed in (or use `supabase.functions.invoke` from a signed-in client). |
+| Edge function returns 500 with empty body | Check `supabase functions logs <name>`. The frontend's `extractFunctionErrorMessage` will surface the real message in the UI. |
+| `daily-reading` returns "No natal chart found" | User skipped onboarding. Send them to `/onboarding`. |
+| Daily reading empty / says "The stars are speaking" | LLM JSON failed schema validation. Schema-validation fallback fired. Inspect `supabase functions logs daily-reading` for the offending content. |
+| Oracle returns 403 | `user_subscriptions.status !== 'active'`. Confirm webhook ran and set the status. |
+| Stripe checkout shows GBP instead of USD | Wrong Price ID configured (the Price's currency drives display). Create a USD Price and set `VITE_STRIPE_PRICE_ID` and `STRIPE_PRICE_ID`. |
+| Webhook never updates subscription | `STRIPE_WEBHOOK_SECRET` missing or wrong; or webhook URL pointing at the wrong Supabase project. Confirm both, then redeploy `stripe-webhook`. |
+| Demo returns 429 immediately | Per-fingerprint hourly cap (10) or daily global cap (2,000) hit. Inspect `demo_rate_limit` / `demo_global_budget`. |
+| Voice transcription returns 503 with quota message | OpenAI quota exhausted; UI falls back to date picker. Refill quota or rotate key. |
+| Build fails on Vercel with "Cannot find module" for `Database` types | `src/types/supabase.ts` missing. Regenerate via `supabase gen types typescript --project-id <REF> > src/types/supabase.ts`. |
+| Domain shows DNS error | Verify A `76.76.21.21` and CNAME `cname.vercel-dns.com` records; wait for propagation. |
+
+---
+
+## 10. Operational notes
+
+- **Cost control:** the demo flow has hard caps at the DB layer. Monitor `demo_global_budget` for the current UTC day to track LLM spend on free demos.
+- **Brand voice:** every LLM-output path strips em dashes in code. If you swap LLM providers, keep the sanitization step intact.
+- **Schema changes:** add a new migration file (timestamp-prefixed) and run `supabase db push`. Regenerate `src/types/supabase.ts` afterwards.
+- **Adding an LLM provider:** extend `_shared/llm.ts` with another `callX` function and add it to the fallback chain in `callLLM`. Provider order is cost-optimized — keep cheapest first.
+- **Rotating keys:** rotating the Supabase service role or anon key requires updating Vercel env vars and redeploying. Supabase auto-injected secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) update automatically inside edge functions.
