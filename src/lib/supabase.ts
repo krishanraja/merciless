@@ -1,12 +1,6 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js'
-
-// `src/types/supabase.ts` is generated via `supabase gen types typescript --linked`
-// and is the source of truth for the DB schema. It is intentionally not yet
-// wired into createClient<Database> — those generated types are stricter than
-// the hand-rolled hook types (correctly exposing nullable columns), and a
-// follow-up pass is needed to add null handling in every hook before flipping
-// the switch.
+import type { Database } from '../types/supabase'
 
 function requireEnv(key: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string {
   const value = import.meta.env[key] as string | undefined
@@ -22,7 +16,12 @@ function requireEnv(key: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string
 const supabaseUrl = requireEnv('VITE_SUPABASE_URL')
 const supabaseAnonKey = requireEnv('VITE_SUPABASE_ANON_KEY')
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+
+// Re-export DB Row aliases — generated types are the source of truth for
+// nullability, but each hook owns the domain mapping (Json → structured shape,
+// nullable column → fallback value).
+export type Tables = Database['public']['Tables']
 
 // Supabase's functions.invoke returns a FunctionsHttpError with the generic
 // message "Edge Function returned a non-2xx status code" and leaves `data`

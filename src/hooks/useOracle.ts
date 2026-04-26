@@ -32,7 +32,8 @@ export function useOracle() {
 
       if (data) {
         setConversationId(data.id)
-        setMessages(data.messages || [])
+        // messages column is `Json` from generated types; cast to known shape
+        setMessages((data.messages as Message[] | null) ?? [])
       }
     } catch {
       // No conversations yet

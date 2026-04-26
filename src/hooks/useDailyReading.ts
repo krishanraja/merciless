@@ -1,5 +1,23 @@
 import { useState, useEffect } from 'react'
-import { supabase, extractFunctionErrorMessage } from '../lib/supabase'
+import { supabase, extractFunctionErrorMessage, type Tables } from '../lib/supabase'
+
+type DailyReadingRow = Tables['daily_readings']['Row']
+
+function mapDailyReading(row: DailyReadingRow): DailyReadingData {
+  return {
+    id: row.id,
+    reading_date: row.reading_date,
+    reading_text: row.reading_text,
+    brutal_headline: row.brutal_headline ?? '',
+    stoic_actions: (row.stoic_actions as DailyReadingData['stoic_actions'] | null) ?? [],
+    active_transits: (row.active_transits as DailyReadingData['active_transits'] | null) ?? [],
+    planet_focus: row.planet_focus ?? 'Sun',
+    intensity_level: row.intensity_level ?? 5,
+    shareable_card_data:
+      (row.shareable_card_data as DailyReadingData['shareable_card_data']) ?? undefined,
+    is_free_tier: row.is_free_tier ?? true,
+  }
+}
 
 export interface DailyReadingData {
   id: string
@@ -38,6 +56,7 @@ export function useDailyReading() {
 
   useEffect(() => {
     loadReading()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadReading = async () => {
@@ -55,7 +74,7 @@ export function useDailyReading() {
         .single()
 
       if (data) {
-        setReading(data)
+        setReading(mapDailyReading(data))
       } else {
         await generateReading()
       }
@@ -86,7 +105,7 @@ export function useDailyReading() {
           )
         )
       }
-      setReading(res.data)
+      setReading(res.data ? mapDailyReading(res.data as DailyReadingRow) : null)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to generate reading')
     } finally {

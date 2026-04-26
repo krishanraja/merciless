@@ -97,6 +97,8 @@ export default function VoiceDateInput({ value, onChange }: VoiceDateInputProps)
       }
       setState('idle')
     }
+    // stopRecording is stable (defined within this component scope)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const stopRecording = useCallback(() => {

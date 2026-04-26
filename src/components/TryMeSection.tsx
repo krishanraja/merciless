@@ -114,6 +114,8 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
       }
       setState('idle')
     }
+    // processAudio + stopRecording are stable (defined within this component scope)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const stopRecording = useCallback(() => {
