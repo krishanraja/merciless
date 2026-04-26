@@ -8,13 +8,14 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          stripe: ['@stripe/stripe-js'],
-          // html2canvas is only used by ShareCard — already auto-splits,
-          // but pinning here keeps the name stable for long-term caching.
-          html2canvas: ['html2canvas'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react-router')) return 'react'
+            if (id.includes('/react-dom/') || id.includes('/react/')) return 'react'
+            if (id.includes('@supabase/supabase-js')) return 'supabase'
+            if (id.includes('@stripe/stripe-js')) return 'stripe'
+            if (id.includes('html2canvas')) return 'html2canvas'
+          }
         },
       },
     },

@@ -22,7 +22,7 @@ export default function DemoShareCard({ result, onBack, onSignupClick }: DemoSha
   const [imageLoaded, setImageLoaded] = useState(false)
 
   const signAsset = getSignAsset(result.sunSign)
-  const signImage = signAsset?.image || '/signs/aries.png'
+  const signImage = signAsset?.image || '/signs/aries.webp'
   const signEmoji = signAsset?.emoji || '☉'
 
   // Preload the sign image

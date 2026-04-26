@@ -1,6 +1,27 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-merciless-black: #0A0A0B;
+  --color-merciless-card: #111115;
+  --color-merciless-border: #1E1E24;
+  --color-merciless-gold: #F5A623;
+  --color-merciless-gold-muted: #C4831A;
+  --color-merciless-violet: #7B2FBE;
+  --color-merciless-violet-light: #9D4EDD;
+  --color-merciless-white: #F0EDE8;
+  --color-merciless-muted: #6B6B7A;
+  --color-merciless-danger: #E53E3E;
+
+  --font-space: "Space Grotesk", sans-serif;
+
+  --animate-twinkle: twinkle 3s ease-in-out infinite;
+  --animate-fade-in: fadeIn 0.5s ease-in-out;
+  --animate-slide-up: slideUp 0.4s ease-out;
+  --animate-pulse-gold: pulseGold 2s ease-in-out infinite;
+  --animate-fade-slide-up: fadeSlideUp 0.6s ease-out forwards;
+  --animate-modal-fade-in: modalFadeIn 0.2s ease-out forwards;
+  --animate-modal-slide-up: modalSlideUp 0.3s ease-out forwards;
+}
 
 :root {
   --color-black: #0A0A0B;

@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js'
 
+// `src/types/supabase.ts` is generated via `supabase gen types typescript --linked`
+// and is the source of truth for the DB schema. It is intentionally not yet
+// wired into createClient<Database> — those generated types are stricter than
+// the hand-rolled hook types (correctly exposing nullable columns), and a
+// follow-up pass is needed to add null handling in every hook before flipping
+// the switch.
+
 function requireEnv(key: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string {
   const value = import.meta.env[key] as string | undefined
   if (!value || typeof value !== 'string' || value.trim() === '') {

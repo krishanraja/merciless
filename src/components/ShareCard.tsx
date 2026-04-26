@@ -24,7 +24,7 @@ export default function ShareCard({ data }: ShareCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
 
   const sunAsset = getSignAsset(data.sunSign)
-  const signImage = sunAsset?.image || '/signs/aries.png'
+  const signImage = sunAsset?.image || '/signs/aries.webp'
 
   // Preload the sign image
   useEffect(() => {
