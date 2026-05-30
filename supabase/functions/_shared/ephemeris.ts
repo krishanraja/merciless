@@ -454,6 +454,15 @@ export function relationalLongitudes(birthDateISO: string): Record<string, numbe
   return out;
 }
 
+// Transiting longitudes of the moving sky at an instant (for the time-scrub
+// overlay on the natal wheel). Universal, not user-specific.
+export function transitingLongitudes(at: Date): Record<string, number> {
+  const time = A.MakeTime(at);
+  const out: Record<string, number> = {};
+  for (const [name, body] of MAJOR_BODIES) out[name] = bodyLongitudeAt(body, time);
+  return out;
+}
+
 // Date-only demo (no birth time, no place). Sun is accurate to sign + degree;
 // Moon is given with an honest intra-day caveat; the sharpest natal aspect among
 // the slow bodies is reliable because they barely move in a day.

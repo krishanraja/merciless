@@ -38,15 +38,19 @@ export interface ChartLike {
 const norm = (x: number) => ((x % 360) + 360) % 360
 const PLOT_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron']
 
-export default function ChartWheel({ chart }: { chart: ChartLike }) {
+interface TransitFrame { date: string; lon: Record<string, number> }
+
+export default function ChartWheel({ chart, transits }: { chart: ChartLike; transits?: TransitFrame[] }) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [frame, setFrame] = useState(0)
 
   const ascLon = chart.planets?.Ascendant?.longitude
   const hasAsc = typeof ascLon === 'number'
   const baseLon = hasAsc ? ascLon : (chart.planets?.Sun?.longitude ?? 0)
 
   const S = 360, cx = S / 2, cy = S / 2
-  const rOuter = 172, rZodiac = 150, rPlanet = 118, rAspect = 96
+  const rOuter = 172, rZodiac = 150, rTransit = 138, rPlanet = 112, rAspect = 92
+  const tf: TransitFrame | undefined = transits && transits.length ? transits[Math.min(frame, transits.length - 1)] : undefined
 
   // Ecliptic longitude -> screen point. ASC at left (180deg), CCW with longitude.
   const pt = (lon: number, r: number) => {
@@ -124,10 +128,41 @@ export default function ChartWheel({ chart }: { chart: ChartLike }) {
           )
         })}
 
+        {/* Transiting overlay (time-scrub): the moving sky on the selected date */}
+        {tf && Object.entries(tf.lon).map(([name, lon]) => {
+          const pos = pt(lon, rTransit)
+          let hit: (typeof planetList)[number] | null = null
+          for (const np of planetList) { let d = Math.abs(norm(lon) - norm(np.longitude)); if (d > 180) d = 360 - d; if (d <= 3) { hit = np; break } }
+          return (
+            <g key={`t-${name}`}>
+              {hit && (() => { const n = pt(hit!.longitude, rPlanet); return <line x1={pos.x} y1={pos.y} x2={n.x} y2={n.y} stroke="#76E4F7" strokeWidth="1" opacity="0.7" /> })()}
+              <circle cx={pos.x} cy={pos.y} r="8" fill="#0A0A0B" stroke="#76E4F7" strokeWidth="0.8" opacity="0.92" />
+              <text x={pos.x} y={pos.y} fontSize="9" fill="#76E4F7" textAnchor="middle" dominantBaseline="central">{PLANET_GLYPHS[name] || '?'}</text>
+            </g>
+          )
+        })}
+
         {/* ASC / MC markers (kept inside the ring so they never clip) */}
         {hasAsc && (() => { const a = pt(ascLon, rOuter - 13); return <text x={a.x} y={a.y} fontSize="9" fill="#9D4EDD" textAnchor="middle" dominantBaseline="central" fontWeight="bold">ASC</text> })()}
         {typeof chart.planets?.Midheaven?.longitude === 'number' && (() => { const m = pt(chart.planets.Midheaven.longitude, rOuter - 13); return <text x={m.x} y={m.y} fontSize="9" fill="#F5A623" textAnchor="middle" dominantBaseline="central" fontWeight="bold">MC</text> })()}
       </svg>
+
+      {transits && transits.length > 1 && (
+        <div className="w-full max-w-[360px] mt-3">
+          <input
+            type="range" min={0} max={transits.length - 1} value={frame}
+            onChange={(e) => setFrame(Number(e.target.value))}
+            className="w-full" style={{ accentColor: '#76E4F7' }}
+            aria-label="Scrub the transit date"
+          />
+          <div className="flex justify-between text-[10px] text-merciless-muted">
+            <span>now</span>
+            <span style={{ color: '#76E4F7' }}>{tf?.date}</span>
+            <span>+{transits.length - 1}wk</span>
+          </div>
+          <p className="text-center text-[10px] text-merciless-muted mt-1">Cyan is the sky on {tf?.date}. Lines show where it lands on your chart.</p>
+        </div>
+      )}
 
       <div className="mt-4 w-full max-w-[360px] min-h-[72px]">
         {sel ? (

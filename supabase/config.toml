@@ -67,3 +67,6 @@ verify_jwt = false
 
 [functions.tts]
 verify_jwt = false
+
+[functions.transit-timeline]
+verify_jwt = false

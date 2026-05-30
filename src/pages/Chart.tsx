@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
@@ -11,6 +12,17 @@ import type { ZodiacSign } from '../lib/astrology'
 export default function Chart() {
   const { chart, birthData, loading } = useNatalChart()
   const { isPro, upgradeToPro, upgrading } = useSubscription()
+  const [transits, setTransits] = useState<Array<{ date: string; lon: Record<string, number> }>>([])
+
+  // Pull the weekly moving-sky frames for the time-scrub overlay (Pro only).
+  useEffect(() => {
+    if (!isPro) return
+    const base = import.meta.env.VITE_SUPABASE_URL, anon = import.meta.env.VITE_SUPABASE_ANON_KEY
+    fetch(`${base}/functions/v1/transit-timeline?weeks=26`, { headers: { apikey: anon, authorization: `Bearer ${anon}` } })
+      .then((r) => (r.ok ? r.json() : { frames: [] }))
+      .then((d) => setTransits(d.frames || []))
+      .catch(() => {})
+  }, [isPro])
 
   // Transform chart planets into PlanetTable format. With whole-sign houses a
   // planet's house is the one whose sign matches the planet's sign (the old
@@ -168,7 +180,7 @@ export default function Chart() {
             {/* Interactive natal wheel */}
             <div className="merciless-card p-6">
               <div className="text-xs tracking-widest text-merciless-muted mb-4">THE WHEEL</div>
-              <ChartWheel chart={chart as unknown as ChartLike} />
+              <ChartWheel chart={chart as unknown as ChartLike} transits={transits} />
             </div>
 
             {/* Planet Table */}
