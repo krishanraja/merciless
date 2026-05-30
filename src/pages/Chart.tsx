@@ -11,17 +11,26 @@ export default function Chart() {
   const { chart, birthData, loading } = useNatalChart()
   const { isPro, upgradeToPro, upgrading } = useSubscription()
 
-  // Transform chart planets into PlanetTable format
+  // Transform chart planets into PlanetTable format. With whole-sign houses a
+  // planet's house is the one whose sign matches the planet's sign (the old
+  // houses[i % 12] index mapping was meaningless). Retrograde is real now, and
+  // the Ascendant/Midheaven pseudo-entries are not planets.
+  const houseBySign: Record<string, number> = {}
+  if (chart) {
+    for (const h of (chart.houses as Array<{ house: number; sign: string }>) || []) houseBySign[h.sign] = h.house
+  }
   const planetsRecord = chart
-    ? (chart.planets as Record<string, { sign: string; longitude: number; degree: number }>)
+    ? (chart.planets as Record<string, { sign: string; longitude: number; degree: number; retrograde?: boolean }>)
     : {}
-  const planetRows = Object.entries(planetsRecord).map(([planet, data], i) => ({
-    planet,
-    sign: data.sign,
-    house: chart?.houses[i % 12]?.house ?? 1,
-    degree: data.degree,
-    retrograde: false,
-  }))
+  const planetRows = Object.entries(planetsRecord)
+    .filter(([planet]) => planet !== 'Ascendant' && planet !== 'Midheaven')
+    .map(([planet, data]) => ({
+      planet,
+      sign: data.sign,
+      house: houseBySign[data.sign] ?? 0,
+      degree: data.degree,
+      retrograde: !!data.retrograde,
+    }))
 
   return (
     <div className="relative z-10 min-h-screen pb-16 md:pb-0">
