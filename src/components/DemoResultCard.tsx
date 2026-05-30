@@ -7,6 +7,7 @@ interface DemoResult {
   brutalHeadline: string
   excerpt: string
   birthDate: string
+  slug?: string
 }
 
 interface DemoResultCardProps {

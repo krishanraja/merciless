@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { getMoonPhaseEmoji } from '../lib/astrology'
 import { getSignAsset, LOGO_PATHS } from '../lib/signAssets'
+import { trackEvent } from '../lib/attribution'
 
 interface ShareCardData {
   brutalHeadline: string
@@ -10,6 +11,7 @@ interface ShareCardData {
   risingSign: string
   date: string
   moonPhase?: string
+  slug?: string
 }
 
 interface ShareCardProps {
@@ -25,6 +27,9 @@ export default function ShareCard({ data }: ShareCardProps) {
 
   const sunAsset = getSignAsset(data.sunSign)
   const signImage = sunAsset?.image || '/signs/aries.webp'
+  // Every share deep-links to the server-rendered Verdict page so it unfurls
+  // with its own card and becomes an attributable landing surface.
+  const shareUrl = data.slug ? `https://merciless.app/v/${data.slug}` : 'https://merciless.app'
 
   // Preload the sign image
   useEffect(() => {
@@ -35,6 +40,7 @@ export default function ShareCard({ data }: ShareCardProps) {
 
   const handleShare = async () => {
     setSharing(true)
+    void trackEvent('share_card_created', { metadata: { slug: data.slug, kind: 'reading' } })
     try {
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current!, {
@@ -51,7 +57,7 @@ export default function ShareCard({ data }: ShareCardProps) {
         await navigator.share({ 
           files: [file], 
           title: 'My Merciless Reading',
-          text: `"${data.brutalHeadline}" - Get your reading at merciless.app`
+          text: `"${data.brutalHeadline}" Get your reading at ${shareUrl}`
         })
         setShared(true)
       } else {
@@ -72,12 +78,12 @@ export default function ShareCard({ data }: ShareCardProps) {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText('https://merciless.app')
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
       const textArea = document.createElement('textarea')
-      textArea.value = 'https://merciless.app'
+      textArea.value = shareUrl
       document.body.appendChild(textArea)
       textArea.select()
       document.execCommand('copy')

@@ -159,3 +159,90 @@ async function callOpenAI(opts: ProviderCallOptions): Promise<string> {
   }
   return text;
 }
+
+// ---- Streaming ----
+// Yields text deltas, Gemini primary then OpenAI fallback. We only fall back if
+// the primary failed BEFORE emitting a token (we cannot un-send bytes once a
+// provider has started streaming).
+export async function* callLLMStream(opts: LLMCallOptions): AsyncGenerator<string> {
+  const { system, messages, maxTokens, temperature = 0.9 } = opts;
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+
+  if (geminiKey) {
+    let yielded = false;
+    try {
+      for await (const t of streamGemini({ system, messages, maxTokens, temperature, apiKey: geminiKey })) {
+        yielded = true;
+        yield t;
+      }
+      return;
+    } catch (err) {
+      if (yielded) throw err; // already streaming; cannot switch providers
+      console.error("Gemini stream failed before first token, falling back:", (err as Error).message);
+    }
+  }
+  if (!openaiKey) throw new Error("All LLM providers failed (no OpenAI key for stream fallback)");
+  yield* streamOpenAI({ system, messages, maxTokens, temperature, apiKey: openaiKey });
+}
+
+async function* parseSSE(res: Response, extract: (j: unknown) => string | undefined): AsyncGenerator<string> {
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") return;
+      try {
+        const t = extract(JSON.parse(data));
+        if (t) yield t;
+      } catch { /* partial or non-JSON keepalive line */ }
+    }
+  }
+}
+
+async function* streamGemini(opts: ProviderCallOptions): AsyncGenerator<string> {
+  const { system, messages, maxTokens, temperature, apiKey } = opts;
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { maxOutputTokens: maxTokens, temperature, thinkingConfig: { thinkingBudget: 0 } },
+    }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+  yield* parseSSE(res, (j) => (j as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> })?.candidates?.[0]?.content?.parts?.[0]?.text);
+}
+
+async function* streamOpenAI(opts: ProviderCallOptions): AsyncGenerator<string> {
+  const { system, messages, maxTokens, temperature, apiKey } = opts;
+  const apiMessages = [{ role: "system", content: system }, ...messages.map((m) => ({ role: m.role, content: m.content }))];
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({ model: OPENAI_MODEL, messages: apiMessages, max_tokens: maxTokens, temperature, stream: true }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  }
+  yield* parseSSE(res, (j) => (j as { choices?: Array<{ delta?: { content?: string } }> })?.choices?.[0]?.delta?.content);
+}

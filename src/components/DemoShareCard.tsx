@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect } from 'react'
 import { getSignAsset, LOGO_PATHS } from '../lib/signAssets'
+import { trackEvent } from '../lib/attribution'
 
 interface DemoResult {
   sunSign: string
   brutalHeadline: string
   excerpt: string
   birthDate: string
+  slug?: string
 }
 
 interface DemoShareCardProps {
@@ -24,6 +26,7 @@ export default function DemoShareCard({ result, onBack, onSignupClick }: DemoSha
   const signAsset = getSignAsset(result.sunSign)
   const signImage = signAsset?.image || '/signs/aries.webp'
   const signEmoji = signAsset?.emoji || '☉'
+  const shareUrl = result.slug ? `https://merciless.app/v/${result.slug}` : 'https://merciless.app'
 
   // Preload the sign image
   useEffect(() => {
@@ -34,6 +37,7 @@ export default function DemoShareCard({ result, onBack, onSignupClick }: DemoSha
 
   const handleShare = async () => {
     setSharing(true)
+    void trackEvent('share_card_created', { metadata: { slug: result.slug, kind: 'demo' } })
     try {
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current!, {
@@ -50,7 +54,7 @@ export default function DemoShareCard({ result, onBack, onSignupClick }: DemoSha
         await navigator.share({ 
           files: [file], 
           title: 'The Oracle Spoke',
-          text: `"${result.brutalHeadline}" - Get your reading at merciless.app`
+          text: `"${result.brutalHeadline}" Get your reading at ${shareUrl}`
         })
         setShared(true)
       } else {
@@ -72,13 +76,13 @@ export default function DemoShareCard({ result, onBack, onSignupClick }: DemoSha
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText('https://merciless.app')
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
-      textArea.value = 'https://merciless.app'
+      textArea.value = shareUrl
       document.body.appendChild(textArea)
       textArea.select()
       document.execCommand('copy')

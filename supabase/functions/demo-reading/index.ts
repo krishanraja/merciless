@@ -150,6 +150,22 @@ Respond with ONLY valid JSON, no markdown:
       };
     }
 
+    const headline = sanitizeVoice(parsed.brutal_headline);
+    const excerpt = sanitizeVoice(parsed.excerpt);
+    const shareSlug = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+
+    // Mint the public share target (best effort).
+    const { error: verdictErr } = await supabase.from("public_verdicts").upsert({
+      slug: shareSlug,
+      headline,
+      excerpt,
+      sun_sign: sunSign,
+      moon_sign: demo.moonSignCertain ? demo.moon.sign : null,
+      rising_sign: null,
+      kind: "demo",
+    });
+    if (verdictErr) console.error("[demo-reading] verdict upsert failed:", verdictErr);
+
     return json({
       success: true,
       sun_sign: sunSign,
@@ -158,9 +174,10 @@ Respond with ONLY valid JSON, no markdown:
       sharpest_aspect: demo.sharpestAspect
         ? `${demo.sharpestAspect.planet1} ${demo.sharpestAspect.aspect} ${demo.sharpestAspect.planet2}`
         : null,
-      brutal_headline: sanitizeVoice(parsed.brutal_headline),
-      excerpt: sanitizeVoice(parsed.excerpt),
+      brutal_headline: headline,
+      excerpt,
       birth_date,
+      share_slug: shareSlug,
     });
   } catch (error) {
     console.error("[demo-reading] fatal:", error);

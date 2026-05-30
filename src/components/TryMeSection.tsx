@@ -10,6 +10,7 @@ interface DemoResult {
   brutalHeadline: string
   excerpt: string
   birthDate: string
+  slug?: string
 }
 
 interface TranscriptionResponse {
@@ -36,6 +37,7 @@ interface DemoReadingResponse {
   brutal_headline: string
   excerpt: string
   birth_date: string
+  share_slug?: string
   error?: string
 }
 
@@ -182,6 +184,7 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
         brutalHeadline: data.brutal_headline,
         excerpt: data.excerpt,
         birthDate: data.birth_date,
+        slug: data.share_slug,
       })
       setState('result')
       void trackEvent('demo_played', { metadata: { sun_sign: data.sun_sign } })

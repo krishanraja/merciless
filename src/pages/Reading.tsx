@@ -157,6 +157,7 @@ export default function Reading() {
                         moonSign: reading.shareable_card_data.moon_sign,
                         risingSign: reading.shareable_card_data.rising_sign,
                         date: today,
+                        slug: reading.shareable_card_data.slug,
                       }}
                     />
                   </div>

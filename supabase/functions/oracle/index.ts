@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { callLLM, type LLMMessage } from "../_shared/llm.ts";
+import { callLLM, callLLMStream, type LLMMessage } from "../_shared/llm.ts";
 import { sanitizeVoice } from "../_shared/brand-voice.ts";
 
 const corsHeaders = {
@@ -38,6 +38,7 @@ serve(async (req) => {
     }
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const conversation_id = typeof body.conversation_id === "string" ? body.conversation_id : null;
+    const wantStream = (body as { stream?: unknown }).stream === true;
     if (!message) return json({ error: "Ask the Oracle something." }, 400);
 
     // Hard Pro gate.
@@ -90,6 +91,49 @@ Chart: ${chartContext}`;
       role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
       content: (m.content ?? "").slice(0, MAX_MSG_CHARS),
     }));
+
+    // Streaming path: stream tokens live, then persist the sanitized full text
+    // BEFORE closing the stream (so the DB write finishes while the isolate is
+    // alive). The conversation id is minted upfront for the response header.
+    if (wantStream) {
+      const convId = owned?.id ?? crypto.randomUUID();
+      const stripDash = (s: string) => s.replace(/[‒–—―]/g, ", ");
+      const encoder = new TextEncoder();
+      const streamBody = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          let full = "";
+          const persist = async () => {
+            const clean = sanitizeVoice(full);
+            if (!clean) return;
+            messages.push({ role: "assistant", content: clean, timestamp: new Date().toISOString() });
+            if (owned) {
+              await supabase.from("oracle_conversations")
+                .update({ messages, updated_at: new Date().toISOString() })
+                .eq("id", owned.id).eq("user_id", user_id);
+            } else {
+              await supabase.from("oracle_conversations")
+                .insert({ id: convId, user_id, messages, session_title: message.slice(0, 50) });
+            }
+          };
+          try {
+            for await (const delta of callLLMStream({ system: systemPrompt, messages: apiMessages, maxTokens: 512 })) {
+              full += delta;
+              controller.enqueue(encoder.encode(stripDash(delta)));
+            }
+            await persist();
+          } catch (err) {
+            console.error("[oracle] stream error:", err);
+            if (!full) controller.enqueue(encoder.encode("The Oracle is gathering itself. Please ask again in a moment."));
+            else { try { await persist(); } catch (e) { console.error("[oracle] persist failed:", e); } }
+          } finally {
+            controller.close();
+          }
+        },
+      });
+      return new Response(streamBody, {
+        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8", "x-conversation-id": convId, "Cache-Control": "no-cache" },
+      });
+    }
 
     let oracleResponse: string;
     try {

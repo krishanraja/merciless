@@ -36,6 +36,8 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!api/|assets/|signs/|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
+    { "source": "/v/:slug", "destination": "/api/v/:slug" },
+    { "source": "/og/:slug", "destination": "/api/og/:slug" },
+    { "source": "/((?!api/|assets/|signs/|v/|og/|offer\\.json|llms\\.txt|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
   ]
 }

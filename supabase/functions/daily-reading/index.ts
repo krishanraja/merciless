@@ -134,6 +134,7 @@ Respond with ONLY valid JSON, no markdown:
     }));
 
     const headline = sanitizeVoice(parsed.brutal_headline || "");
+    const shareSlug = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
     const readingData = {
       user_id,
       reading_date: today,
@@ -149,6 +150,7 @@ Respond with ONLY valid JSON, no markdown:
         rising_sign: chart.rising_sign,
         brutal_headline: headline,
         date: today,
+        slug: shareSlug,
       },
       is_free_tier: !isPro,
     };
@@ -166,6 +168,19 @@ Respond with ONLY valid JSON, no markdown:
       console.error("[daily-reading] save failed:", saveError);
       return json({ error: "Could not save your reading. Please try again." }, 500);
     }
+
+    // Mint the public share target so /v/{slug} can render server-side. Best
+    // effort: never block the reading on the share row.
+    const { error: verdictErr } = await supabase.from("public_verdicts").upsert({
+      slug: shareSlug,
+      headline,
+      excerpt: sanitizeVoice((parsed.reading_text || "").slice(0, 180)),
+      sun_sign: chart.sun_sign,
+      moon_sign: chart.moon_sign,
+      rising_sign: chart.rising_sign,
+      kind: "reading",
+    });
+    if (verdictErr) console.error("[daily-reading] verdict upsert failed:", verdictErr);
 
     return json(saved);
   } catch (error) {

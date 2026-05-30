@@ -51,6 +51,7 @@ export interface DailyReadingData {
     rising_sign: string
     brutal_headline: string
     date: string
+    slug?: string
   }
   is_free_tier: boolean
 }

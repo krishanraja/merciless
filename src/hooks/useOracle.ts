@@ -41,43 +41,58 @@ export function useOracle() {
   }
 
   const sendMessage = async (message: string) => {
+    setLoading(true)
+    setError(null)
+    // Optimistic user message. The assistant bubble is pushed on the first token.
+    setMessages((prev) => [...prev, { role: 'user', content: message, timestamp: new Date().toISOString() }])
+
+    let started = false
     try {
-      setLoading(true)
-      setError(null)
-
-      const userMsg: Message = {
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, userMsg])
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await supabase.functions.invoke('oracle', {
-        body: {
-          user_id: user.id,
-          message,
-          conversation_id: conversationId,
-        },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+      if (!session) throw new Error('Not authenticated')
+
+      const base = import.meta.env.VITE_SUPABASE_URL
+      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const res = await fetch(`${base}/functions/v1/oracle`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', apikey: anon, Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ message, conversation_id: conversationId, stream: true }),
       })
 
-      if (res.error) throw new Error(res.error.message)
-
-      const assistantMsg: Message = {
-        role: 'assistant',
-        content: res.data.response,
-        timestamp: new Date().toISOString(),
+      // Errors (Pro gate, auth, bad input) come back as JSON, not a stream.
+      if (!res.ok || !res.body || (res.headers.get('content-type') || '').includes('application/json')) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'The Oracle is unavailable. Please try again.')
       }
-      setMessages((prev) => [...prev, assistantMsg])
-      if (res.data.conversation_id) setConversationId(res.data.conversation_id)
+
+      const convId = res.headers.get('x-conversation-id')
+      if (convId) setConversationId(convId)
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        if (!chunk) continue
+        if (!started) {
+          started = true
+          setLoading(false)
+          setMessages((prev) => [...prev, { role: 'assistant', content: chunk, timestamp: new Date().toISOString() }])
+        } else {
+          setMessages((prev) => {
+            const copy = [...prev]
+            const last = copy[copy.length - 1]
+            if (last?.role === 'assistant') copy[copy.length - 1] = { ...last, content: last.content + chunk }
+            return copy
+          })
+        }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Oracle is unavailable')
-      // Remove optimistic user message on error
-      setMessages((prev) => prev.slice(0, -1))
+      // If nothing streamed, remove the optimistic user message; otherwise keep
+      // the partial answer that did arrive.
+      if (!started) setMessages((prev) => prev.slice(0, -1))
     } finally {
       setLoading(false)
     }
