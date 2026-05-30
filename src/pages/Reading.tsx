@@ -8,6 +8,7 @@ import ShareCard from '../components/ShareCard'
 import SignBadge from '../components/SignBadge'
 import AppNav from '../components/AppNav'
 import { getIntensityLabel } from '../lib/astrology'
+import { trackEvent } from '../lib/attribution'
 
 export default function Reading() {
   const navigate = useNavigate()
@@ -24,8 +25,14 @@ export default function Reading() {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   const intensityConfig = reading ? getIntensityLabel(reading.intensity_level) : null
 
+  // Free users now get the whole reading. The conversion ask is the agency
+  // upsell (the Oracle), so a free user seeing it is a paywall_hit signal.
+  useEffect(() => {
+    if (reading && !isPro) void trackEvent('paywall_hit')
+  }, [reading, isPro])
+
   return (
-    <div className={`relative z-10 ${!isPro ? 'reading-viewport-lock' : 'min-h-screen pb-16 md:pb-0'}`}>
+    <div className="relative z-10 min-h-screen pb-16 md:pb-0">
       <AppNav />
 
       <main className="max-w-3xl mx-auto px-5 py-6 md:px-6 md:py-10 space-y-6 md:space-y-8">
@@ -114,95 +121,93 @@ export default function Reading() {
               )}
             </div>
 
-            {isPro ? (
-              <>
-                <div className="merciless-card p-6">
-                  <div className="text-xs tracking-widest text-merciless-muted mb-4">FULL READING</div>
-                  <p className="text-merciless-white leading-relaxed text-sm md:text-base">
-                    {reading.reading_text}
-                  </p>
-                </div>
+            {/* The full reading is free, every day. Free depth is the acquisition
+                weapon; Pro converts on agency, not on a withheld paragraph. */}
+            <div className="merciless-card p-6">
+              <div className="text-xs tracking-widest text-merciless-muted mb-4">FULL READING</div>
+              <p className="text-merciless-white leading-relaxed text-sm md:text-base whitespace-pre-line">
+                {reading.reading_text}
+              </p>
+            </div>
 
-                {reading.active_transits && reading.active_transits.length > 0 && (
-                  <div className="merciless-card p-6">
-                    <div className="text-xs tracking-widest text-merciless-muted mb-4">ACTIVE TRANSITS</div>
-                    <div className="flex flex-wrap gap-2">
-                      {reading.active_transits.slice(0, 6).map((transit, i) => (
-                        <span
-                          key={i}
-                          className="text-xs bg-merciless-black border border-merciless-border rounded px-3 py-1.5 text-merciless-muted"
-                        >
-                          {`${transit.transiting_planet} ${transit.aspect} ${transit.natal_planet}`}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {reading.stoic_actions && reading.stoic_actions.length > 0 && (
-                  <div className="merciless-card p-6">
-                    <div className="text-xs tracking-widest text-merciless-muted mb-4">TODAY'S ACTIONS</div>
-                    <StoicActionCard actions={reading.stoic_actions} />
-                  </div>
-                )}
-
-                {reading.shareable_card_data && (
-                  <div className="merciless-card p-6">
-                    <div className="text-xs tracking-widest text-merciless-muted mb-4">SHARE YOUR READING</div>
-                    <ShareCard
-                      data={{
-                        brutalHeadline: reading.brutal_headline,
-                        excerpt: reading.reading_text.slice(0, 120) + '...',
-                        sunSign: reading.shareable_card_data.sun_sign,
-                        moonSign: reading.shareable_card_data.moon_sign,
-                        risingSign: reading.shareable_card_data.rising_sign,
-                        date: today,
-                        slug: reading.shareable_card_data.slug,
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div className="merciless-card p-6 violet-glow" style={{ borderColor: 'rgba(123,47,190,0.3)' }}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-xs tracking-widest text-merciless-muted mb-2">THE ORACLE</div>
-                      <p className="text-merciless-white text-sm leading-relaxed">
-                        Ask your chart anything. The Oracle speaks from your natal chart with authority.
-                      </p>
-                    </div>
-                    <Link
-                      to="/oracle"
-                      className="ml-6 flex-shrink-0 px-4 py-2 bg-merciless-violet text-white text-xs font-bold tracking-widest rounded-lg hover:bg-merciless-violet-light transition-colors"
+            {reading.active_transits && reading.active_transits.length > 0 && (
+              <div className="merciless-card p-6">
+                <div className="text-xs tracking-widest text-merciless-muted mb-4">ACTIVE TRANSITS</div>
+                <div className="flex flex-wrap gap-2">
+                  {reading.active_transits.slice(0, 6).map((transit, i) => (
+                    <span
+                      key={i}
+                      className="text-xs bg-merciless-black border border-merciless-border rounded px-3 py-1.5 text-merciless-muted"
                     >
-                      ASK →
-                    </Link>
-                  </div>
+                      {`${transit.transiting_planet} ${transit.aspect} ${transit.natal_planet}`}
+                    </span>
+                  ))}
                 </div>
-              </>
+              </div>
+            )}
+
+            {reading.stoic_actions && reading.stoic_actions.length > 0 && (
+              <div className="merciless-card p-6">
+                <div className="text-xs tracking-widest text-merciless-muted mb-4">TODAY'S ACTIONS</div>
+                <StoicActionCard actions={reading.stoic_actions} />
+              </div>
+            )}
+
+            {reading.shareable_card_data && (
+              <div className="merciless-card p-6">
+                <div className="text-xs tracking-widest text-merciless-muted mb-4">SHARE YOUR READING</div>
+                <ShareCard
+                  data={{
+                    brutalHeadline: reading.brutal_headline,
+                    excerpt: reading.reading_text.slice(0, 120) + '...',
+                    sunSign: reading.shareable_card_data.sun_sign,
+                    moonSign: reading.shareable_card_data.moon_sign,
+                    risingSign: reading.shareable_card_data.rising_sign,
+                    date: today,
+                    slug: reading.shareable_card_data.slug,
+                  }}
+                />
+              </div>
+            )}
+
+            {isPro ? (
+              <div className="merciless-card p-6 violet-glow" style={{ borderColor: 'rgba(123,47,190,0.3)' }}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs tracking-widest text-merciless-muted mb-2">THE ORACLE</div>
+                    <p className="text-merciless-white text-sm leading-relaxed">
+                      Ask your chart anything. The Oracle speaks from your natal chart with authority.
+                    </p>
+                  </div>
+                  <Link
+                    to="/oracle"
+                    className="ml-6 flex-shrink-0 px-4 py-2 bg-merciless-violet text-white text-xs font-bold tracking-widest rounded-lg hover:bg-merciless-violet-light transition-colors"
+                  >
+                    ASK →
+                  </Link>
+                </div>
+              </div>
             ) : (
-              <div className="merciless-card p-8 text-center space-y-6" style={{ borderColor: 'rgba(245,166,35,0.2)' }}>
+              <div className="merciless-card p-8 text-center space-y-6" style={{ borderColor: 'rgba(123,47,190,0.3)' }}>
                 <div>
                   <div className="text-xs tracking-widest text-merciless-muted mb-3">PRO: $4.99/mo</div>
                   <h2 className="text-merciless-white font-bold text-xl mb-3">
-                    The headline is free.<br />The truth costs $4.99.
+                    Your reading is yours.<br />Pro is the chart you can argue with.
                   </h2>
                   <p className="text-merciless-muted text-sm leading-relaxed">
-                    Full readings. Stoic actions. The Oracle. All backed by your actual natal chart.
+                    The Oracle answers anything, from your actual chart. Plus the full natal chart and the transits coming for you.
                   </p>
                 </div>
 
                 <div className="space-y-3 text-sm text-left max-w-xs mx-auto">
                   {[
-                    '150-200 word daily reading',
-                    'Chart-specific Stoic actions',
-                    'Active transit analysis',
-                    'Unlimited Oracle conversations',
-                    'Shareable reading cards',
+                    'The Oracle: ask your chart anything, unlimited',
                     'Full natal chart viewer',
+                    'The transits coming for you, dated ahead',
+                    'It remembers what you told it',
                   ].map((f) => (
                     <div key={f} className="flex items-center gap-2 text-merciless-muted">
-                      <span className="text-merciless-gold">✓</span>
+                      <span className="text-merciless-violet-light">✦</span>
                       <span>{f}</span>
                     </div>
                   ))}
@@ -213,7 +218,7 @@ export default function Reading() {
                   disabled={upgrading}
                   className="w-full max-w-xs mx-auto block py-4 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50 animate-pulse-gold"
                 >
-                  {upgrading ? 'REDIRECTING...' : 'UPGRADE TO PRO'}
+                  {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE'}
                 </button>
               </div>
             )}

@@ -55,3 +55,6 @@ verify_jwt = false
 
 [functions.track]
 verify_jwt = false
+
+[functions.synastry]
+verify_jwt = false

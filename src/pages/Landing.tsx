@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import AuthModal from '../components/AuthModal'
 import TryMeSection from '../components/TryMeSection'
+import SynastrySection from '../components/SynastrySection'
 
 export default function Landing() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -101,6 +102,11 @@ export default function Landing() {
           className="min-h-screen flex flex-col items-center justify-center px-5 md:px-8 py-16 md:py-24 border-t border-merciless-border/30"
         >
           <TryMeSection onSignupClick={handleSignupClick} />
+        </section>
+
+        {/* Synastry: the two-sided relationship verdict (the K-factor front door) */}
+        <section className="flex flex-col items-center justify-center px-5 md:px-8 py-16 md:py-24 border-t border-merciless-border/30">
+          <SynastrySection onSignupClick={handleSignupClick} />
         </section>
 
         {/* Final CTA Section */}

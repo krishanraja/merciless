@@ -404,6 +404,56 @@ export function computeTransits(
   return out;
 }
 
+// Synastry: inter-chart aspects between two people's placements. Uses the
+// relational bodies (Sun..Saturn, Venus and Mars carry the weight), all slow
+// enough that a date-only chart is reliable. Returns A-planet to B-planet hits.
+export interface SynastryHit {
+  a_planet: string;
+  b_planet: string;
+  aspect: string;
+  angle: number;
+  orb: number;
+}
+
+const SYNASTRY_BODIES = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+const SYNASTRY_DEFS = [
+  { name: "conjunction", angle: 0, orb: 7 },
+  { name: "sextile", angle: 60, orb: 4 },
+  { name: "square", angle: 90, orb: 6 },
+  { name: "trine", angle: 120, orb: 6 },
+  { name: "opposition", angle: 180, orb: 7 },
+];
+
+export function computeSynastryAspects(a: Record<string, number>, b: Record<string, number>): SynastryHit[] {
+  const out: SynastryHit[] = [];
+  for (const pa of SYNASTRY_BODIES) {
+    if (a[pa] == null) continue;
+    for (const pb of SYNASTRY_BODIES) {
+      if (b[pb] == null) continue;
+      let diff = Math.abs(norm360(a[pa]) - norm360(b[pb]));
+      if (diff > 180) diff = 360 - diff;
+      for (const def of SYNASTRY_DEFS) {
+        const orb = Math.abs(diff - def.angle);
+        if (orb <= def.orb) {
+          out.push({ a_planet: pa, b_planet: pb, aspect: def.name, angle: def.angle, orb: Math.round(orb * 100) / 100 });
+        }
+      }
+    }
+  }
+  return out.sort((x, y) => x.orb - y.orb);
+}
+
+// Relational longitudes for a date-only chart (noon UTC), for synastry.
+export function relationalLongitudes(birthDateISO: string): Record<string, number> {
+  const [y, m, d] = birthDateISO.split("-").map(Number);
+  const chart = computeChart({ utc: new Date(Date.UTC(y, m - 1, d, 12, 0, 0)), timeKnown: false });
+  const out: Record<string, number> = {};
+  for (const name of SYNASTRY_BODIES) {
+    if (chart.positions[name]) out[name] = chart.positions[name].longitude;
+  }
+  return out;
+}
+
 // Date-only demo (no birth time, no place). Sun is accurate to sign + degree;
 // Moon is given with an honest intra-day caveat; the sharpest natal aspect among
 // the slow bodies is reliable because they barely move in a day.

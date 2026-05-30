@@ -24,6 +24,13 @@ export const DemoReadingLLMSchema = z.object({
 });
 export type DemoReadingLLM = z.infer<typeof DemoReadingLLMSchema>;
 
+export const SynastryLLMSchema = z.object({
+  headline: z.string().min(1).max(300),
+  dynamic: z.string().min(1).max(900),
+  the_other: z.string().max(700).optional().default(""),
+});
+export type SynastryLLM = z.infer<typeof SynastryLLMSchema>;
+
 // Attempt JSON.parse; if that fails, extract the first {...} substring and
 // retry. Returns the raw string if no valid JSON object is found so the
 // caller can log it alongside the schema failure.
