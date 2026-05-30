@@ -58,3 +58,9 @@ verify_jwt = false
 
 [functions.synastry]
 verify_jwt = false
+
+[functions.offer]
+verify_jwt = false
+
+[functions.offer-admin]
+verify_jwt = false

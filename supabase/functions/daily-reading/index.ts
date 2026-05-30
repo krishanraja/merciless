@@ -87,7 +87,12 @@ serve(async (req) => {
 
 CRITICAL VOICE RULES: Never use em dashes. Use commas, periods, colons, or semicolons. Never use the words might, maybe, perhaps, consider, or "you may want to". Never write "it is not X, it is Y". State it plainly.`;
 
-    const userPrompt = `Today is ${today}. Generate today's reading for this chart.
+    // Silent persona adaptation (zero settings): birth-time-known reads as more
+    // chart-literate, so lean technical; unknown leans into the emotional core.
+    const toneHint = chart.rising_sign
+      ? "This person knows their birth time and reads charts. Be technically precise, name the degrees and aspects."
+      : "This person does not know their birth time. Lead with the emotional core, not house technicalities.";
+    const userPrompt = `Today is ${today}. ${toneHint} Generate today's reading for this chart.
 Chart: ${chartSummary}
 Active transits today: ${activeTransits.slice(0, 8).map((t) => `transiting ${t.transiting_planet} ${t.aspect} natal ${t.natal_planet} (orb ${t.orb} deg, ${t.applying ? "applying" : "separating"})`).join(", ") || "no major transits today"}
 

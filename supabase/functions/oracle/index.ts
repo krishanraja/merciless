@@ -84,7 +84,9 @@ serve(async (req) => {
 
 VOICE RULES: Never use em dashes, use commas, periods, colons, or semicolons. Never use the words might, maybe, perhaps, or consider. Never write "it is not X, it is Y". State what is.
 
-Chart: ${chartContext}`;
+Chart: ${chartContext}
+
+TONE: ${chart.rising_sign ? "This person knows their birth time and reads charts; be precise and technical, cite degrees and aspects." : "This person does not know their birth time; lead with the emotional core, not house technicalities."}`;
 
     const MAX_MSG_CHARS = 4000;
     const apiMessages: LLMMessage[] = messages.slice(-20).map((m) => ({
