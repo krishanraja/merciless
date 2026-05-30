@@ -18,7 +18,7 @@ const supabaseAnonKey = requireEnv('VITE_SUPABASE_ANON_KEY')
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
-// Re-export DB Row aliases — generated types are the source of truth for
+// Re-export DB Row aliases. Generated types are the source of truth for
 // nullability, but each hook owns the domain mapping (Json → structured shape,
 // nullable column → fallback value).
 export type Tables = Database['public']['Tables']

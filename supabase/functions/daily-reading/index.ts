@@ -2,129 +2,67 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM } from "../_shared/llm.ts";
 import { DailyReadingLLMSchema, extractJsonObject } from "../_shared/schemas.ts";
+import { sanitizeVoice } from "../_shared/brand-voice.ts";
+import { computeTransits } from "../_shared/ephemeris.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Sanitize AI output: replace em dashes with appropriate punctuation
-function sanitizeEmDashes(text: string): string {
-  return text.replace(/—/g, ";");
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
-function getZodiacSign(longitude: number): string {
-  const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-  return signs[Math.floor(longitude / 30) % 12];
-}
-
-function calcPlanetLongitude(planet: string, jd: number): number {
-  const T = (jd - 2451545.0) / 36525.0;
-  const orbitalElements: Record<string, { L0: number, L1: number }> = {
-    Sun: { L0: 280.46646, L1: 36000.76983 },
-    Moon: { L0: 218.3165, L1: 481267.8813 },
-    Mercury: { L0: 252.2509, L1: 149472.6674 },
-    Venus: { L0: 181.9798, L1: 58517.8156 },
-    Mars: { L0: 355.4330, L1: 19140.2993 },
-    Jupiter: { L0: 34.3515, L1: 3034.9057 },
-    Saturn: { L0: 50.0774, L1: 1222.1138 },
-    Uranus: { L0: 314.0550, L1: 428.4682 },
-    Neptune: { L0: 304.3489, L1: 218.4862 },
-    Pluto: { L0: 238.9290, L1: 144.9600 },
-  };
-  const el = orbitalElements[planet];
-  if (!el) return 0;
-  return ((el.L0 + el.L1 * T) % 360 + 360) % 360;
-}
-
-function dateToJulianDay(year: number, month: number, day: number, hour: number = 12): number {
-  if (month <= 2) { year -= 1; month += 12; }
-  const A = Math.floor(year / 100);
-  const B = 2 - A + Math.floor(A / 4);
-  return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + hour/24 + B - 1524.5;
-}
-
-function getTodayTransits(natalPlanets: Record<string, {longitude: number}>, today: Date) {
-  const jd = dateToJulianDay(today.getFullYear(), today.getMonth() + 1, today.getDate());
-  const transitPlanets = ["Sun","Moon","Mercury","Venus","Mars","Jupiter","Saturn"];
-  const transits: Array<{transiting_planet: string, natal_planet: string, aspect: string, orb: number, is_applying: boolean}> = [];
-
-  const aspectDefs = [
-    { name: "conjunct", angle: 0, orb: 5 },
-    { name: "sextile", angle: 60, orb: 3 },
-    { name: "square", angle: 90, orb: 5 },
-    { name: "trine", angle: 120, orb: 5 },
-    { name: "opposite", angle: 180, orb: 5 },
-  ];
-
-  for (const transitPlanet of transitPlanets) {
-    const transitLong = calcPlanetLongitude(transitPlanet, jd);
-
-    for (const [natalPlanet, natalData] of Object.entries(natalPlanets)) {
-      let diff = Math.abs(transitLong - natalData.longitude);
-      if (diff > 180) diff = 360 - diff;
-
-      for (const asp of aspectDefs) {
-        const orb = Math.abs(diff - asp.angle);
-        if (orb <= asp.orb) {
-          transits.push({
-            transiting_planet: transitPlanet,
-            natal_planet: natalPlanet,
-            aspect: asp.name,
-            orb: Math.round(orb * 100) / 100,
-            is_applying: transitLong < natalData.longitude,
-          });
-        }
-      }
-    }
+// Pull a clean { body: longitude } map out of the stored chart, skipping the
+// angle pseudo-entries (Ascendant / Midheaven) that are not transiting bodies.
+function natalLongitudes(planets: Record<string, { longitude?: number }>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [name, p] of Object.entries(planets)) {
+    if (name === "Ascendant" || name === "Midheaven") continue;
+    if (p && typeof p.longitude === "number") out[name] = p.longitude;
   }
-  return transits;
+  return out;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Authenticate user from JWT
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "Unauthorized" }, 401);
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
     const user_id = user.id;
     const today = new Date().toISOString().split("T")[0];
 
-    // Check for existing reading
+    // Idempotent: one reading per user per day.
     const { data: existing } = await supabase
       .from("daily_readings")
       .select("*")
       .eq("user_id", user_id)
       .eq("reading_date", today)
       .single();
+    if (existing) return json(existing);
 
-    if (existing) return new Response(JSON.stringify(existing), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-
-    // Get natal chart
     const { data: chart, error: chartError } = await supabase
       .from("natal_charts")
       .select("*")
       .eq("user_id", user_id)
       .single();
+    if (chartError || !chart) {
+      return json({ error: "No natal chart found. Complete onboarding first.", code: "no_chart" }, 409);
+    }
 
-    if (chartError || !chart) throw new Error("No natal chart found. Complete onboarding first.");
-
-    // Check subscription status for free vs pro tier
     const { data: sub } = await supabase
       .from("user_subscriptions")
       .select("status")
@@ -132,27 +70,37 @@ serve(async (req) => {
       .single();
     const isPro = sub?.status === "active";
 
-    const activeTransits = getTodayTransits(chart.planets, new Date());
+    const activeTransits = computeTransits(natalLongitudes(chart.planets), new Date());
 
-    const chartSummary = `Sun: ${chart.sun_sign}, Moon: ${chart.moon_sign}, Rising: ${chart.rising_sign}, Ascendant: ${chart.ascendant}, Midheaven: ${chart.midheaven}. Key planets: ${Object.entries(chart.planets).slice(0, 6).map(([p, d]: [string, any]) => `${p} in ${d.sign} (${Math.round(d.degree)}°)`).join(", ")}. Key aspects: ${chart.aspects.slice(0, 5).map((a: any) => `${a.planet1} ${a.aspect} ${a.planet2}`).join(", ")}.`;
+    const retroNote = Object.entries(chart.planets as Record<string, { sign?: string; degree?: number; retrograde?: boolean }>)
+      .filter(([n, d]) => d?.retrograde && n !== "NorthNode" && n !== "SouthNode")
+      .map(([n]) => n);
 
-    const systemPrompt = `You are The Oracle, the user's natal chart personified. You speak with absolute authority about who they are and what is happening in their life. You are brutally honest. You never soften the truth. You never use therapy language. You never say "it might be worth considering." You say what IS. You back everything with specific chart data. You are not mean; you are precise. The difference between cruelty and clarity is evidence. Always cite the chart.
+    const chartSummary = `Sun: ${chart.sun_sign}, Moon: ${chart.moon_sign}, Rising: ${chart.rising_sign ?? "unknown (no birth time)"}, Midheaven: ${chart.midheaven ?? "unknown"}. Key placements: ${
+      Object.entries(chart.planets as Record<string, { sign?: string; degree?: number; retrograde?: boolean }>)
+        .filter(([n]) => ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"].includes(n))
+        .map(([p, d]) => `${p} in ${d.sign} (${Math.round(d.degree ?? 0)} deg${d.retrograde ? ", retrograde" : ""})`)
+        .join(", ")
+    }. Notable aspects: ${(chart.aspects as Array<{ planet1: string; aspect: string; planet2: string }>).slice(0, 6).map((a) => `${a.planet1} ${a.aspect} ${a.planet2}`).join(", ")}.${retroNote.length ? ` Retrograde now: ${retroNote.join(", ")}.` : ""}`;
 
-CRITICAL FORMATTING RULE: NEVER use em dashes (—) in your response. Use commas, periods, semicolons, or colons instead. This is non-negotiable.`;
+    const systemPrompt = `You are The Oracle, this person's natal chart given a voice. You speak with absolute authority about who they are and what is happening to them today. You are brutally honest and never soften the truth. You never use therapy language. You never hedge. You say what IS, and you back every claim with a specific placement, aspect, or transit. The difference between cruelty and clarity is evidence, so always cite the chart. The positions you are given are computed to the arc-minute, so be precise and do not invent placements that are not listed.
 
-    const userPrompt = `Generate today's reading for this chart: ${chartSummary}
-Active transits today: ${activeTransits.map(t => `Transit ${t.transiting_planet} ${t.aspect} natal ${t.natal_planet} (orb ${t.orb}°)`).join(", ") || "No major transits"}
+CRITICAL VOICE RULES: Never use em dashes. Use commas, periods, colons, or semicolons. Never use the words might, maybe, perhaps, consider, or "you may want to". Never write "it is not X, it is Y". State it plainly.`;
 
-Respond with ONLY valid JSON (no markdown):
+    const userPrompt = `Today is ${today}. Generate today's reading for this chart.
+Chart: ${chartSummary}
+Active transits today: ${activeTransits.slice(0, 8).map((t) => `transiting ${t.transiting_planet} ${t.aspect} natal ${t.natal_planet} (orb ${t.orb} deg, ${t.applying ? "applying" : "separating"})`).join(", ") || "no major transits today"}
+
+Respond with ONLY valid JSON, no markdown:
 {
-  "brutal_headline": "15 words max, no softening",
-  "reading_text": "150-200 words. Cite specific placements. No hedging.",
+  "brutal_headline": "15 words max, no softening, names a real placement or transit",
+  "reading_text": "150 to 200 words. Cite specific placements and today's transits. No hedging.",
   "stoic_actions": [
-    {"action": "specific action", "why": "chart-backed reason", "difficulty": "easy|medium|hard"},
+    {"action": "specific action for today", "why": "chart-backed reason", "difficulty": "easy|medium|hard"},
     {"action": "...", "why": "...", "difficulty": "..."},
     {"action": "...", "why": "...", "difficulty": "..."}
   ],
-  "planet_focus": "primary planet or transit driving today",
+  "planet_focus": "the planet or transit driving today",
   "intensity_level": 7
 }`;
 
@@ -165,42 +113,32 @@ Respond with ONLY valid JSON (no markdown):
       });
       content = result.text;
     } catch (err) {
-      console.error("LLM error (daily-reading):", err);
-      return new Response(JSON.stringify({
-        error: "Reading generation is temporarily unavailable. Please try again later.",
-      }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("[daily-reading] LLM error:", err);
+      return json({ error: "Your reading is taking longer than usual. Please try again in a moment." }, 503);
     }
 
     let parsed: import("../_shared/schemas.ts").DailyReadingLLM;
     try {
-      const rawJson = extractJsonObject(content);
-      parsed = DailyReadingLLMSchema.parse(rawJson);
+      parsed = DailyReadingLLMSchema.parse(extractJsonObject(content));
     } catch (schemaErr) {
-      console.error("LLM schema validation failed (daily-reading):", schemaErr, { content });
-      parsed = {
-        brutal_headline: "The stars are speaking",
-        reading_text: content.slice(0, 5000) || "Your reading could not be generated. Please try again.",
-        stoic_actions: [],
-        planet_focus: "Sun",
-        intensity_level: 5,
-      };
+      // Never surface raw model output to the user. Ask for a clean retry instead
+      // of persisting a malformed reading and caching it for the whole day.
+      console.error("[daily-reading] schema validation failed:", schemaErr);
+      return json({ error: "Your reading did not come through cleanly. Please try again." }, 503);
     }
 
-    // Sanitize all text fields to remove em dashes
     const sanitizedActions = parsed.stoic_actions.map((a) => ({
-      action: sanitizeEmDashes(a.action || ""),
-      why: sanitizeEmDashes(a.why || ""),
+      action: sanitizeVoice(a.action || ""),
+      why: sanitizeVoice(a.why || ""),
       ...(a.difficulty ? { difficulty: a.difficulty } : {}),
     }));
 
+    const headline = sanitizeVoice(parsed.brutal_headline || "");
     const readingData = {
       user_id,
       reading_date: today,
-      reading_text: sanitizeEmDashes(parsed.reading_text || ""),
-      brutal_headline: sanitizeEmDashes(parsed.brutal_headline || ""),
+      reading_text: sanitizeVoice(parsed.reading_text || ""),
+      brutal_headline: headline,
       stoic_actions: sanitizedActions,
       active_transits: activeTransits,
       planet_focus: parsed.planet_focus,
@@ -209,7 +147,7 @@ Respond with ONLY valid JSON (no markdown):
         sun_sign: chart.sun_sign,
         moon_sign: chart.moon_sign,
         rising_sign: chart.rising_sign,
-        brutal_headline: parsed.brutal_headline,
+        brutal_headline: headline,
         date: today,
       },
       is_free_tier: !isPro,
@@ -220,18 +158,18 @@ Respond with ONLY valid JSON (no markdown):
       .insert(readingData)
       .select()
       .single();
+    if (saveError) {
+      // A unique-violation means a concurrent request already wrote today's row.
+      const { data: row } = await supabase
+        .from("daily_readings").select("*").eq("user_id", user_id).eq("reading_date", today).single();
+      if (row) return json(row);
+      console.error("[daily-reading] save failed:", saveError);
+      return json({ error: "Could not save your reading. Please try again." }, 500);
+    }
 
-    if (saveError) throw saveError;
-
-    return new Response(JSON.stringify(saved), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json(saved);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
     console.error("[daily-reading] fatal:", error);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Reading generation is temporarily unavailable. Please try again." }, 500);
   }
 });

@@ -1,143 +1,129 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callLLM, type LLMMessage } from "../_shared/llm.ts";
+import { sanitizeVoice } from "../_shared/brand-voice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Sanitize AI output: replace em dashes with appropriate punctuation
-function sanitizeEmDashes(text: string): string {
-  return text.replace(/—/g, ";");
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Authenticate user from JWT
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return json({ error: "Unauthorized" }, 401);
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { message, conversation_id } = await req.json();
+    if (authError || !user) return json({ error: "Unauthorized" }, 401);
     const user_id = user.id;
 
-    // Check subscription
+    let body: { message?: unknown; conversation_id?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "Invalid request body" }, 400);
+    }
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    const conversation_id = typeof body.conversation_id === "string" ? body.conversation_id : null;
+    if (!message) return json({ error: "Ask the Oracle something." }, 400);
+
+    // Hard Pro gate.
     const { data: sub } = await supabase
       .from("user_subscriptions")
       .select("status")
       .eq("user_id", user_id)
       .single();
+    if (!sub || sub.status !== "active") return json({ error: "Pro subscription required" }, 403);
 
-    if (!sub || sub.status !== "active") {
-      return new Response(JSON.stringify({ error: "Pro subscription required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get natal chart
     const { data: chart } = await supabase
       .from("natal_charts")
       .select("*")
       .eq("user_id", user_id)
       .single();
+    if (!chart) return json({ error: "No natal chart found. Complete onboarding first.", code: "no_chart" }, 409);
 
-    if (!chart) throw new Error("No natal chart found");
-
-    // Load or create conversation (verify ownership)
-    let conversationData;
+    // Load the conversation only if it belongs to this user. An unknown or
+    // unowned id is treated as a new conversation (never an update of another
+    // user's row).
+    let owned: { id: string; messages: unknown[] } | null = null;
     if (conversation_id) {
       const { data } = await supabase
         .from("oracle_conversations")
-        .select("*")
+        .select("id, messages")
         .eq("id", conversation_id)
         .eq("user_id", user_id)
         .single();
-      conversationData = data;
+      if (data) owned = data as { id: string; messages: unknown[] };
     }
 
-    const messages = conversationData?.messages || [];
+    const messages: Array<{ role: string; content: string; timestamp: string }> =
+      (owned?.messages as Array<{ role: string; content: string; timestamp: string }>) || [];
     messages.push({ role: "user", content: message, timestamp: new Date().toISOString() });
 
-    // Build context
-    const chartContext = `Sun: ${chart.sun_sign}, Moon: ${chart.moon_sign}, Rising: ${chart.rising_sign}. Planets: ${Object.entries(chart.planets).map(([p, d]: [string, any]) => `${p} in ${d.sign}`).join(", ")}. Key aspects: ${chart.aspects.slice(0, 8).map((a: any) => `${a.planet1} ${a.aspect} ${a.planet2}`).join(", ")}.`;
+    const planetLine = Object.entries(chart.planets as Record<string, { sign?: string; degree?: number; retrograde?: boolean }>)
+      .filter(([n]) => !["_meta"].includes(n))
+      .map(([p, d]) => `${p} in ${d.sign}${d.retrograde ? " (retrograde)" : ""}`)
+      .join(", ");
+    const chartContext = `Sun: ${chart.sun_sign}, Moon: ${chart.moon_sign}, Rising: ${chart.rising_sign ?? "unknown (no birth time)"}. Placements: ${planetLine}. Key aspects: ${(chart.aspects as Array<{ planet1: string; aspect: string; planet2: string }>).slice(0, 8).map((a) => `${a.planet1} ${a.aspect} ${a.planet2}`).join(", ")}.`;
 
-    const systemPrompt = `You are The Oracle, this person's natal chart personified. You have been watching them their entire life. You know their patterns, their wounds, their gifts, their blind spots. You speak from the chart, always. You are brutally honest but never cruel. You never use therapy language or soft qualifiers. When they ask a question, you answer it specifically, with chart evidence. You are not here to comfort. You are here to clarify.
+    const systemPrompt = `You are The Oracle, this person's natal chart given a voice. You have watched them their whole life and you know their patterns, wounds, gifts, and blind spots. You answer the question they asked, specifically, with chart evidence, every time. You are brutally honest and never cruel. You never use therapy language or soft qualifiers. You are not here to comfort, you are here to clarify. The placements below are computed to the arc-minute, so cite them precisely and never invent a placement that is not listed.
 
-CRITICAL FORMATTING RULE: NEVER use em dashes (—) in your response. Use commas, periods, semicolons, or colons instead. This is non-negotiable.
+VOICE RULES: Never use em dashes, use commas, periods, colons, or semicolons. Never use the words might, maybe, perhaps, or consider. Never write "it is not X, it is Y". State what is.
 
-Chart context: ${chartContext}
-
-Example tone:
-Q: "Why do I keep self-sabotaging in relationships?"
-A: "Chiron in your 7th house, square Venus. You're not self-sabotaging; you're replaying a wound from early in your life where love felt conditional. The square to Venus means your sense of worth and your wound are tangled together. Until you separate them, every relationship will feel like a test you're failing."`;
+Chart: ${chartContext}`;
 
     const MAX_MSG_CHARS = 4000;
-    const apiMessages: LLMMessage[] = messages
-      .slice(-20)
-      .map((m: { role: string; content: string }) => ({
-        role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
-        content: (m.content ?? "").slice(0, MAX_MSG_CHARS),
-      }));
+    const apiMessages: LLMMessage[] = messages.slice(-20).map((m) => ({
+      role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: (m.content ?? "").slice(0, MAX_MSG_CHARS),
+    }));
 
     let oracleResponse: string;
     try {
-      const result = await callLLM({
-        system: systemPrompt,
-        messages: apiMessages,
-        maxTokens: 512,
-      });
-      oracleResponse = sanitizeEmDashes(result.text);
+      const result = await callLLM({ system: systemPrompt, messages: apiMessages, maxTokens: 512 });
+      oracleResponse = sanitizeVoice(result.text);
     } catch (err) {
-      console.error("LLM error (oracle):", err);
-      return new Response(JSON.stringify({
-        error: "The Oracle is temporarily unavailable. Please try again later.",
-      }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("[oracle] LLM error:", err);
+      return json({ error: "The Oracle is gathering itself. Please ask again in a moment." }, 503);
     }
 
     messages.push({ role: "assistant", content: oracleResponse, timestamp: new Date().toISOString() });
 
-    // Save conversation
-    let savedConvId = conversation_id;
-    if (conversation_id) {
-      await supabase
+    // Persist, and treat a persistence failure as real (do not pretend it saved).
+    let savedConvId = owned?.id ?? null;
+    if (owned) {
+      const { error: updErr } = await supabase
         .from("oracle_conversations")
         .update({ messages, updated_at: new Date().toISOString() })
-        .eq("id", conversation_id);
+        .eq("id", owned.id)
+        .eq("user_id", user_id);
+      if (updErr) console.error("[oracle] conversation update failed:", updErr);
     } else {
-      const { data: newConv } = await supabase
+      const { data: newConv, error: insErr } = await supabase
         .from("oracle_conversations")
         .insert({ user_id, messages, session_title: message.slice(0, 50) })
-        .select()
+        .select("id")
         .single();
-      savedConvId = newConv?.id;
+      if (insErr) console.error("[oracle] conversation insert failed:", insErr);
+      savedConvId = newConv?.id ?? null;
     }
 
-    return new Response(JSON.stringify({ response: oracleResponse, conversation_id: savedConvId }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ response: oracleResponse, conversation_id: savedConvId });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
     console.error("[oracle] fatal:", error);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "The Oracle is temporarily unavailable. Please try again." }, 500);
   }
 });

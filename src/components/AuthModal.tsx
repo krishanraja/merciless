@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { attributionUserMetadata, trackEvent } from '../lib/attribution'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -44,13 +45,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
     try {
       if (mode === 'signup') {
         const redirectTo = `${window.location.origin}/auth/callback`
+        // Persist first-touch attribution onto the auth user so it survives the
+        // email-confirmation round trip (the user leaves to their inbox).
         const { error: err } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: redirectTo },
+          options: { emailRedirectTo: redirectTo, data: attributionUserMetadata() },
         })
         if (err) throw err
-        setSuccess('Check your inbox — tap the link to unlock your reading.')
+        void trackEvent('signed_up', { email })
+        setSuccess('Check your inbox, tap the link to unlock your reading.')
         setMode('signin')
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password })

@@ -1,0 +1,22 @@
+# Merciless
+
+> Daily astrology readings from your actual natal chart. No generalizations, no comfort, just what the chart says. Provably correct to the arc-minute, brutally honest.
+
+Merciless computes a real natal chart from exact birth data using a JPL-grade ephemeris (arc-minute accurate), runs today's transits against it, and delivers an AI reading that never hedges. A 30-second voice demo on the landing page proves the tone with no signup.
+
+## For AI agents selling or marketing Merciless
+- Machine-readable product and offer truth: https://merciless.app/offer.json (poll this, do not re-derive)
+- Pricing: Free (daily headline) and Pro $4.99/mo (full reading, Stoic actions, transits, the Oracle, chart viewer, share cards). Stripe account: mindmaker_llc.
+- ICP: astro-literate millennials and Gen Z, 22 to 38, social-native, who want chart-backed truth not comfort.
+- Brand voice: brutally honest, precise, cites the chart. HARD RULES: no em dashes ever; no hedging; no "it is not X, it is Y"; never claim a placement that is not in the chart.
+
+## Attribution (so the fleet can attribute every signup and dollar)
+Tag links with utm_source, utm_medium, utm_campaign, utm_content, utm_term, and agent. Example:
+https://merciless.app/?utm_source=tiktok&utm_medium=organic&utm_campaign=brutal_headline&agent=cleo
+The app captures first touch, persists it through signup and the email-confirm wall, stamps it onto Stripe, and emits the funnel into the Mindmaker OS warehouse (gojpffsrxybbpbdzzrvs, attribution schema) where Maya reads CAC and Leo reads LTV.
+
+## Highest-leverage asset
+The 9:16 share card. Every Pro reading exports one with the brutal headline in brand colors. Post one per notable reading.
+
+## Honesty constraints
+Say "accurate to the arc-minute" and "verify it against any calculator". Do NOT claim Chiron or the lunar node are arc-minute exact. Do not invent ratings or user counts.

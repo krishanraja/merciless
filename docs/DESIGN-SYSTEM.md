@@ -1,4 +1,4 @@
-# Merciless — Design System
+# Merciless Design System
 
 The visual system is engineered to support the brand's tonal claim: *direct, evidenced, unflinching.* Black + gold + violet, a single sans family, sharp typographic rhythm, generous tracking on labels.
 
@@ -30,9 +30,9 @@ Zodiac sign images live in `public/signs/` as `.webp` (12 files, cached `max-age
 | `merciless-black` | `#0A0A0B` | Page background |
 | `merciless-card` | `#111115` | Card background |
 | `merciless-border` | `#1E1E24` | Borders, dividers |
-| `merciless-gold` | `#F5A623` | Primary accent — headlines, CTAs, active nav |
+| `merciless-gold` | `#F5A623` | Primary accent (headlines, CTAs, active nav) |
 | `merciless-gold-muted` | `#C4831A` | Gold gradient endpoint |
-| `merciless-violet` | `#7B2FBE` | Secondary accent — Oracle, Pro features |
+| `merciless-violet` | `#7B2FBE` | Secondary accent (Oracle, Pro features) |
 | `merciless-violet-light` | `#9D4EDD` | Violet hover/light variant |
 | `merciless-white` | `#F0EDE8` | Warm body text |
 | `merciless-muted` | `#6B6B7A` | Secondary text, labels |
@@ -90,20 +90,57 @@ Tailwind: `font-space: ['"Space Grotesk"', 'sans-serif']`.
 | Element | Size | Weight | Tracking | Example |
 |---|---|---|---|---|
 | Hero headline | `text-2xl md:text-3xl lg:text-4xl` | bold | snug leading | Landing hero |
-| Section headline | `text-xl md:text-2xl` | bold | — | "Ready for the full truth?" |
-| Reading headline | `text-2xl md:text-3xl` | bold | — | Brutal headline on `/reading` |
-| Card title | `text-xl` | bold | — | Upgrade card |
-| Body text | `text-sm md:text-base` | normal | — | Reading text |
+| Section headline | `text-xl md:text-2xl` | bold | normal | "Ready for the full truth?" |
+| Reading headline | `text-2xl md:text-3xl` | bold | normal | Brutal headline on `/reading` |
+| Card title | `text-xl` | bold | normal | Upgrade card |
+| Body text | `text-sm md:text-base` | normal | normal | Reading text |
 | Pill / label | `text-[10px] md:text-xs` | medium | `tracking-[0.2em]` to `[0.3em]` | "NATAL CHART · DAILY TRANSITS · THE ORACLE" |
 | Mobile tab label | `text-[9px]` | medium | `tracking-wider` | Bottom tab bar |
 | Brand mark | `text-lg` | bold | `tracking-[0.2em]` | "MERCILESS" wordmark |
 
-### Voice rules baked into UI copy
+Labels are uppercase and tracked. For copy rules (no em dashes, no hedging), see the [Voice](#voice) section below; those rules are enforced in code, not just by convention.
 
-- No em dashes anywhere — UI strings, prompts, and LLM output. The product enforces this in code (`sanitizeEmDashes` strips `—` from every LLM response before display).
-- Use semicolons, periods, or colons in place of em dashes.
-- Labels are uppercase + tracked.
-- Body copy avoids hedging language ("might", "perhaps", "consider").
+---
+
+## Voice
+
+Voice is a design constraint, not a content guideline. Every string the product shows, whether a hand-written UI label or a line of model output, is held to the same tonal law: *direct, evidenced, unflinching. The voice states what is. It never softens.*
+
+The constraint is enforced in code by a shared engine: `supabase/functions/_shared/brand-voice.ts`. It is wired into every function that emits model text: `demo-reading`, `daily-reading`, and `oracle`. The engine exposes two functions.
+
+### `sanitizeVoice(text)`: mechanical, always-on cleanup
+
+Runs on every model output before a human or the fleet ever sees it. It is idempotent and never throws on bad input (non-string input returns an empty string). Its core job is removing em dashes, and it does so **by context** rather than with a blunt substitution:
+
+- Numeric ranges keep a plain hyphen: `3—5` and `3 – 5` both become `3-5`.
+- A double hyphen used as a dash (` -- `) becomes a comma join.
+- A leading or trailing dash is decorative and is dropped.
+- Any remaining dash joining two clauses becomes a comma. Example: `Mars — your war — squares Venus` becomes `Mars, your war, squares Venus`.
+- A final healing pass repairs punctuation artifacts the joins can create (doubled commas, a comma before a period, stray spacing).
+
+This replaces the old per-function `sanitizeEmDashes`, which did a blanket `—` to `;` swap that turned one clause into two. The new engine **never** uses that semicolon splice. `sanitizeEmDashes` still exists as a backward-compatible alias for `sanitizeVoice`, so existing call sites keep working and simply get commas instead of semicolons.
+
+The dash class it recognizes covers figure dash, en dash, em dash, and horizontal bar (`‒ – — ―`), so a model cannot slip a near-look-alike past the filter.
+
+### `lintVoice(text)`: the detective pass
+
+`lintVoice` sanitizes the text, then reports what is still off-brand. It returns the cleaned string, a list of violations, and an `ok` flag that is `false` whenever any **blocking** violation is present. The fleet auto-post gate posts only when `ok === true`, and generation pipelines can regenerate on a blocking violation. Violations are also logged so brand drift can be tracked over time.
+
+| Rule | Severity | What it catches |
+|---|---|---|
+| `em-dash` | blocking | A dash from the em-dash class appeared in the raw model output (even though sanitize already fixed it). Presence in the raw output is itself drift. |
+| `hedging` | blocking | Hedging vocabulary: `might`, `maybe`, `perhaps`, `possibly`, `may want to`, `you may`, `it sounds like`, `grain of salt`, `trust the process`, `everyone's experience differs`, `consider`, `tends to`, `can sometimes`, `in some ways`. |
+| `negative-parallelism` | blocking | The "it is not X, it is Y" / "this isn't X, it's Y" / "not X, but Y" construction. |
+| `rule-of-three` | advisory | A reflexive three-item list (`word, word, and word`). Advisory only: confirm the triad earns its place. |
+
+### Enforced design constraints
+
+These follow directly from the engine and apply to every surface, UI strings included:
+
+- **No em dashes anywhere.** Use commas, colons, periods, or parentheses. This document follows the same rule.
+- **No hedging.** State the claim. Drop softeners like "might", "perhaps", and "consider".
+- **No negative parallelism.** Do not build sentences on the "not X, it is Y" frame.
+- **No reflexive rule-of-three.** A three-item list has to earn its place rather than appear by habit.
 
 ---
 
@@ -121,13 +158,13 @@ Padding: `p-6` standard, `p-8` for emphasis cards.
 
 ### Glow effects
 
-Gold (`.gold-glow`) — primary reading card:
+Gold (`.gold-glow`), primary reading card:
 
 ```css
 box-shadow: 0 0 20px rgba(245,166,35,0.30), 0 0 40px rgba(245,166,35,0.10);
 ```
 
-Violet (`.violet-glow`) — Oracle CTA:
+Violet (`.violet-glow`), Oracle CTA:
 
 ```css
 box-shadow: 0 0 20px rgba(123,47,190,0.40), 0 0 40px rgba(123,47,190,0.15);
@@ -206,8 +243,8 @@ Top bar with brand mark left, horizontal links right (`Reading`, `Chart`, `Oracl
 
 Two bars:
 
-1. Top — minimal, brand icon centered.
-2. Bottom — fixed tab bar (`AppNav.tsx`):
+1. Top, minimal, brand icon centered.
+2. Bottom, fixed tab bar (`AppNav.tsx`):
    - 4 tabs: Reading (☉), Chart (◎), Oracle (☽), Settings (⚙).
    - Active tab is `text-merciless-gold`; inactive is `text-merciless-muted`.
    - Bottom inset uses `env(safe-area-inset-bottom)`.
@@ -232,9 +269,9 @@ Defined in `tailwind.config.ts`:
 | `animate-pulse-gold` | Gold box-shadow expand/fade | 2s infinite |
 
 Additional CSS animations in `index.css`:
-- `.typing-dot` — staggered bounce for Oracle loading (3 dots).
-- `.text-gold-shimmer` — gold gradient shimmer on key landing words.
-- `.pill-glow` — soft gold glow on the landing pill badge.
+- `.typing-dot`, staggered bounce for Oracle loading (3 dots).
+- `.text-gold-shimmer`, gold gradient shimmer on key landing words.
+- `.pill-glow`, soft gold glow on the landing pill badge.
 
 ---
 
@@ -273,6 +310,8 @@ Additional CSS animations in `index.css`:
 | Pluto | ♇ |
 | Chiron | ⚷ |
 | North Node | ☊ |
+
+Note: Sun through Pluto are computed to arc-minute accuracy by the shared ephemeris engine. The mean lunar node and Chiron are labelled approximate in the data and are not part of that accuracy guarantee. See the ephemeris docs for detail.
 
 ### Aspects
 
@@ -337,7 +376,7 @@ Additional CSS animations in `index.css`:
 - Excerpt: `#9B9B9B`, 14 px
 - Watermark: `#F5A623`, 12 px, letter-spacing 2 px
 
-The card is built specifically to be recognizable at thumbnail size in TikTok / IG / X feeds — black + gold is the silhouette.
+The card is built specifically to be recognizable at thumbnail size in TikTok / IG / X feeds: black + gold is the silhouette. The ascending sign appears in the signs row only when birth time and place are known, since the ephemeris engine omits angles rather than fabricating them.
 
 ---
 
@@ -347,7 +386,7 @@ Canvas-based animated background (`StarfieldBg.tsx`):
 - 180 stars, random position, size 1–2.5 px, opacity twinkle.
 - Sinusoidal opacity animation at randomized speeds.
 - Fixed `z-index: 0`, `pointer-events: none`.
-- Radial-gradient overlay: `#0d0d14` center → `#0A0A0B` edges.
+- Radial-gradient overlay: `#0d0d14` center to `#0A0A0B` edges.
 
 Always present behind the main app surface; provides depth without competing with content.
 
