@@ -15,8 +15,8 @@ function requireEnv(key: 'VITE_STRIPE_PUBLISHABLE_KEY' | 'VITE_STRIPE_PRICE_ID')
 
 const stripePublishableKey = requireEnv('VITE_STRIPE_PUBLISHABLE_KEY')
 
-// Warn loudly when live keys are used outside production — prevents real
-// charges from typos in local dev. pk_live_* + non-prod host = red flag.
+// Warn loudly when live keys are used outside production, which prevents real
+// charges from typos in local dev. pk_live_* on a non-prod host is a red flag.
 if (
   typeof window !== 'undefined' &&
   stripePublishableKey.startsWith('pk_live_') &&

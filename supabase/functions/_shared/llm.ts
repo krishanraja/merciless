@@ -108,6 +108,10 @@ async function callGemini(opts: ProviderCallOptions): Promise<string> {
       generationConfig: {
         maxOutputTokens: maxTokens,
         temperature,
+        // Gemini 2.5 Flash enables "thinking" by default, which consumes the
+        // output-token budget before any JSON is written and starves short
+        // responses. Disable it: we want the answer, not the reasoning.
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
