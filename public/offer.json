@@ -1,0 +1,134 @@
+{
+  "$schema": "https://merciless.app/offer.schema.json",
+  "version": "2026-05-30.1",
+  "app": "merciless",
+  "stripe_account": "mindmaker_llc",
+  "updated_at": "2026-05-30",
+  "note": "Single machine-readable source of product and offer truth for the Mindmaker OS fleet (Maya, Leo, prospecting/content/PR agents). Poll this; do not re-derive. Every claim here is accurate to the live app as of updated_at.",
+
+  "product": {
+    "name": "Merciless",
+    "url": "https://merciless.app",
+    "one_liner": "Daily astrology readings from your actual natal chart. No generalizations, no comfort, just what the chart says.",
+    "category_line": "The only astrology app that is provably correct to the arc-minute and brutally honest about what your chart says.",
+    "what_it_is": "A subscription astrology product. It computes a real natal chart from exact birth data using an arc-minute-accurate ephemeris, runs today's transits against it, and delivers an AI reading that never hedges. A 30-second voice demo on the landing page proves the tone with no signup.",
+    "magic_moment": "Speak or type your birth date on the landing page and within seconds get a brutal, chart-evidenced headline back, free, before you sign up."
+  },
+
+  "icp": {
+    "summary": "Astro-literate millennials and Gen Z, 22 to 38, roughly 70 percent female, social-native on TikTok, Instagram, X, and Reddit, who want chart-backed truth not comfort.",
+    "buying_triggers": [
+      "Posted about a Saturn return or Mercury retrograde",
+      "Publicly trashed Co-Star or The Pattern for being vague",
+      "Just had their chart read in person",
+      "In a life transition: breakup, job change, move, identity shift",
+      "Searching for 'free natal chart', 'what does my Saturn placement mean', 'transit calendar'"
+    ],
+    "personas": [
+      { "name": "The Seeker", "share_of_revenue": "~60%", "wants": "depth and to be seen", "best_channel": "TikTok and IG Reels", "hook": "Your chart has always known. You just were not ready to listen." },
+      { "name": "The Skeptic-Curious", "share_of_revenue": "~25%", "wants": "to be convinced by verifiable accuracy", "best_channel": "X, Reddit, retargeting", "hook": "Astrology you can check. The degrees are right and the read is brutal." },
+      { "name": "The Deep Practitioner", "share_of_revenue": "~15%, highest LTV", "wants": "real chart machinery and precision", "best_channel": "astro X, niche Discords, micro-influencer seeding", "hook": "Arc-minute placements, named transits with orbs, and a verdict that does not flatter you." }
+    ]
+  },
+
+  "problem": "Every astrology app comforts and generalizes with sun-sign mush instead of telling you the chart-backed truth you already half-know. Co-Star is vague, The Pattern is archetypal, Chani is gentle. None hands you something provably accurate AND brutally honest about your real birth geometry.",
+
+  "positioning": {
+    "vs_costar": "Co-Star is vague and occasionally cruel without evidence. Merciless is precise and cites the exact placement.",
+    "vs_the_pattern": "The Pattern is a mood board. Merciless is a verdict with the degree attached.",
+    "vs_chani": "Chani is gentle and educational. Merciless is brutal and specific.",
+    "moat": "Correct AND brutal. Arc-minute accuracy you can verify against any calculator, paired with a voice that never softens. Pretty-and-vague is the generic competitor. Correct-and-brutal is uncopyable."
+  },
+
+  "pricing": {
+    "currency": "USD",
+    "tiers": [
+      { "name": "Free", "price": "$0", "includes": ["Landing voice demo", "Daily brutal headline from your real chart", "Natal chart calculation"] },
+      { "name": "Pro", "price": "$4.99/mo", "stripe_product": "prod_UHoQV8ymZNk4Um", "stripe_price": "price_1TJEo24w6vAdI2o57Rz8Cp3X", "includes": ["Full chart-evidenced daily reading", "Difficulty-rated Stoic actions", "Today's active transits", "The Oracle (multi-turn chat as your chart)", "Full natal chart viewer", "9:16 shareable cards"] }
+    ],
+    "sales_line": "$4.99/mo, less than half a coffee. The headline stays free forever, so you only pay if it lands.",
+    "rule": "Currency must render as USD at checkout. If GBP appears, escalate; do not sell on a wrong-price page."
+  },
+
+  "current_offer": {
+    "headline_offer": "Free brutal daily reading from your real chart. Pro unlocks the Oracle, transits, and the full chart for $4.99/mo.",
+    "live_promo": null
+  },
+
+  "sales_anchors": [
+    "Your chart has always known things about you that you have not been willing to hear.",
+    "Co-Star tells you what you want to hear. We tell you what the chart says.",
+    "The headline is free. The truth costs $4.99.",
+    "Speak your birth date. Get a brutal reading in seconds. No signup.",
+    "Arc-minute placements, named transits with orbs. Evidence, not vibes.",
+    "The Oracle remembers your chart and cites it in every answer.",
+    "Mars just squared your natal Venus. Check your reading before you text them back."
+  ],
+
+  "outcomes": [
+    "Replaces 2 to 4 separate astrology apps with one that is accurate and honest",
+    "Generates at least one shareable, screenshot-worthy asset per reading",
+    "Turns the daily horoscope habit into a chart-evidenced ritual"
+  ],
+
+  "brand_voice": {
+    "tone": "Brutally honest, precise, never cruel for its own sake. The difference between cruelty and clarity is evidence, so always cite the chart.",
+    "hard_rules": [
+      "NEVER use em dashes anywhere. Use commas, colons, periods, or parentheses.",
+      "Never hedge: no 'might', 'maybe', 'perhaps', 'consider', 'you may want to', 'grain of salt', 'trust the process', 'everyone's experience differs'.",
+      "Never write 'it is not X, it is Y' negative parallelism.",
+      "Never use therapy language or soft qualifiers.",
+      "Never claim a placement that is not in the chart. The math is exact; do not invent."
+    ],
+    "never_say": ["might", "may want to", "it sounds like", "grain of salt", "trust the process", "everyone's experience differs"],
+    "enforcement": "All app-generated text passes the shared brand-voice linter (supabase/functions/_shared/brand-voice.ts). Fleet-posted text should pass the same rules before publishing."
+  },
+
+  "accuracy": {
+    "engine": "Real ephemeris (astronomy-engine, JPL-grade) computing tropical positions of date for Sun, Moon, Mercury through Pluto, plus real Ascendant, Midheaven, whole-sign houses, aspects with orbs, and retrograde.",
+    "guarantee": "Bodies and angles are accurate to the arc-minute when birth time and place are known. Mean Node and Chiron are labelled approximate. When birth time is unknown, houses and angles are omitted rather than fabricated.",
+    "claim_safely": "You may say 'accurate to the arc-minute' and 'verify it against any calculator'. Do NOT claim Chiron or the lunar node are arc-minute exact."
+  },
+
+  "api_contracts": {
+    "note": "Every edge function is JWT-secured JSON with a stable contract. Agents can call the same APIs the app uses. Base: https://<project>.supabase.co/functions/v1/",
+    "public_no_auth": [
+      { "name": "demo-reading", "method": "POST", "body": { "birth_date": "YYYY-MM-DD" }, "returns": "sun_sign, sun_degree, moon_sign, sharpest_aspect, brutal_headline, excerpt", "limits": "10/hour/fingerprint, 2000/day global" },
+      { "name": "transcribe-date", "method": "POST multipart audio", "returns": "parsed birth date", "limits": "20/hour/fingerprint, 3000/day global, 6MB audio" },
+      { "name": "track", "method": "POST", "purpose": "client funnel events, forwarded to the OS warehouse" }
+    ],
+    "authed": ["natal-chart", "daily-reading", "oracle (Pro-gated)", "create-checkout"],
+    "stripe_signed": ["stripe-webhook"]
+  },
+
+  "attribution": {
+    "how": "Tag every fleet-driven link with utm_source, utm_medium, utm_campaign, utm_content, utm_term, and agent. Optionally pass mcl_cid to stitch a known click. The app captures first touch, persists it through signup and the email-confirm wall, stamps it onto the Stripe customer and subscription, and emits the full funnel (landed, demo_played, signed_up, chart_calculated, activated, paywall_hit, purchased, refunded, churned) into the Mindmaker OS warehouse via the ingest-attribution front door.",
+    "warehouse": "gojpffsrxybbpbdzzrvs (attribution schema). Maya reads attribution.funnel_by_campaign for CAC; Leo reads attribution.revenue_by_campaign for LTV/revenue. Both span the mindmaker_llc and fractionl_ai Stripe accounts.",
+    "example_link": "https://merciless.app/?utm_source=tiktok&utm_medium=organic&utm_campaign=brutal_headline&agent=cleo&mcl_cid=<optional>"
+  },
+
+  "content_feeds": {
+    "evergreen_sign_hooks": {
+      "Aries": "impulsive fire, the need to be first, impatience disguised as passion",
+      "Taurus": "stubborn comfort-seeking, possessiveness masked as loyalty, resistance to change",
+      "Gemini": "scattered attention, surface connections, the fear of being pinned down",
+      "Cancer": "emotional leverage, victimhood as armor, smothering love",
+      "Leo": "the need for validation, ego fragility, drama as identity",
+      "Virgo": "paralysis by analysis, criticism as control, perfectionism as self-sabotage",
+      "Libra": "people-pleasing as cowardice, indecision as avoidance, surface harmony",
+      "Scorpio": "control through secrecy, intensity as intimidation, grudges as identity",
+      "Sagittarius": "commitment phobia, honesty weaponized, restlessness as running",
+      "Capricorn": "emotional unavailability, work as escape, status as self-worth",
+      "Aquarius": "detachment as superiority, rebellion without a cause, intimacy avoidance",
+      "Pisces": "escapism, boundaries as a foreign concept, the comfort of the wound"
+    },
+    "share_card": "Every Pro reading exports a 9:16 PNG with the brutal headline locked in brand colors (black #0A0A0B, gold #F5A623). The highest-leverage asset; post one per notable reading.",
+    "daily_headline_feed": "The day's headline and 12 per-sign takes are generated by the fleet on a daily cron using the demo-reading and daily-reading contracts above, then linted against brand_voice before posting."
+  },
+
+  "design": {
+    "palette": { "bg": "#0A0A0B", "accent_gold": "#F5A623", "accent_violet": "#7B2FBE", "text": "#F0EDE8" },
+    "type": "Space Grotesk",
+    "look": "Dark cosmic, animated starfield, astrological Unicode glyphs not emoji"
+  }
+}

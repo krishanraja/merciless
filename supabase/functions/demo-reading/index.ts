@@ -1,27 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { callLLM } from "../_shared/llm.ts";
+import { DemoReadingLLMSchema, extractJsonObject } from "../_shared/schemas.ts";
+import { sanitizeVoice } from "../_shared/brand-voice.ts";
+import { computeDateOnlyDemo } from "../_shared/ephemeris.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PER_FP_LIMIT = 10;            // requests per hour per fingerprint
+const PER_FP_LIMIT = 10; // requests per hour per fingerprint
 const PER_FP_WINDOW_SECONDS = 3600; // 1 hour
-const GLOBAL_DAILY_LIMIT = 2000;    // ceiling on total free demo LLM calls / UTC day
+const GLOBAL_DAILY_LIMIT = 2000; // ceiling on total free demo LLM calls / UTC day
 
-// Sanitize AI output: replace em dashes with appropriate punctuation
-function sanitizeEmDashes(text: string): string {
-  return text.replace(/—/g, ";");
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 async function sha256Hex(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
   const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function fingerprintFromRequest(req: Request): string {
@@ -40,64 +43,19 @@ interface RateLimitClient {
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 }
 
-async function checkRateLimits(
-  client: RateLimitClient,
-  fingerprint: string,
-): Promise<{ blocked: boolean; reason?: string }> {
-  // Fingerprint-level bump (atomic in Postgres)
-  const { data: fpCount, error: fpErr } = await client.rpc(
-    "demo_rate_limit_bump",
-    { p_fingerprint: fingerprint, p_window_seconds: PER_FP_WINDOW_SECONDS },
-  );
-  if (fpErr) {
-    // Fail closed on DB error — better to show an error than run up LLM bills
-    return { blocked: true, reason: `rate-limit check failed: ${fpErr.message}` };
-  }
-  if (typeof fpCount === "number" && fpCount > PER_FP_LIMIT) {
-    return { blocked: true, reason: "per-fingerprint hourly limit reached" };
-  }
+async function checkRateLimits(client: RateLimitClient, fingerprint: string): Promise<{ blocked: boolean; reason?: string }> {
+  const { data: fpCount, error: fpErr } = await client.rpc("demo_rate_limit_bump", {
+    p_fingerprint: fingerprint,
+    p_window_seconds: PER_FP_WINDOW_SECONDS,
+  });
+  if (fpErr) return { blocked: true, reason: `rate-limit check failed: ${fpErr.message}` };
+  if (typeof fpCount === "number" && fpCount > PER_FP_LIMIT) return { blocked: true, reason: "per-fingerprint hourly limit reached" };
 
-  // Global daily budget bump
-  const { data: globalCount, error: globalErr } = await client.rpc(
-    "demo_global_budget_bump",
-  );
-  if (globalErr) {
-    return { blocked: true, reason: `global budget check failed: ${globalErr.message}` };
-  }
-  if (typeof globalCount === "number" && globalCount > GLOBAL_DAILY_LIMIT) {
-    return { blocked: true, reason: "daily demo budget reached" };
-  }
+  const { data: globalCount, error: globalErr } = await client.rpc("demo_global_budget_bump");
+  if (globalErr) return { blocked: true, reason: `global budget check failed: ${globalErr.message}` };
+  if (typeof globalCount === "number" && globalCount > GLOBAL_DAILY_LIMIT) return { blocked: true, reason: "daily demo budget reached" };
 
   return { blocked: false };
-}
-
-function getSunSign(month: number, day: number): string {
-  const signs = [
-    { sign: "Capricorn", start: [1, 1], end: [1, 19] },
-    { sign: "Aquarius", start: [1, 20], end: [2, 18] },
-    { sign: "Pisces", start: [2, 19], end: [3, 20] },
-    { sign: "Aries", start: [3, 21], end: [4, 19] },
-    { sign: "Taurus", start: [4, 20], end: [5, 20] },
-    { sign: "Gemini", start: [5, 21], end: [6, 20] },
-    { sign: "Cancer", start: [6, 21], end: [7, 22] },
-    { sign: "Leo", start: [7, 23], end: [8, 22] },
-    { sign: "Virgo", start: [8, 23], end: [9, 22] },
-    { sign: "Libra", start: [9, 23], end: [10, 22] },
-    { sign: "Scorpio", start: [10, 23], end: [11, 21] },
-    { sign: "Sagittarius", start: [11, 22], end: [12, 21] },
-    { sign: "Capricorn", start: [12, 22], end: [12, 31] },
-  ];
-
-  for (const { sign, start, end } of signs) {
-    const afterStart = month > start[0] || (month === start[0] && day >= start[1]);
-    const beforeEnd = month < end[0] || (month === end[0] && day <= end[1]);
-    
-    if (afterStart && beforeEnd) {
-      return sign;
-    }
-  }
-  
-  return "Capricorn"; // fallback
 }
 
 const signTraits: Record<string, string> = {
@@ -129,51 +87,43 @@ serve(async (req) => {
     const rateCheck = await checkRateLimits(supabase as unknown as RateLimitClient, fingerprint);
     if (rateCheck.blocked) {
       console.warn(`[demo-reading] blocked: ${rateCheck.reason}`);
-      return new Response(JSON.stringify({
-        error: "Too many requests. Please try again later.",
-        success: false,
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Too many requests. Please try again later.", success: false }, 429);
     }
 
-    const { birth_date } = await req.json();
-
-    if (!birth_date) {
-      throw new Error("Birth date is required");
+    let birth_date: string | undefined;
+    try {
+      ({ birth_date } = await req.json());
+    } catch {
+      return json({ success: false, error: "Invalid request body" }, 400);
+    }
+    if (!birth_date || !/^\d{4}-\d{2}-\d{2}$/.test(birth_date)) {
+      return json({ success: false, error: "A valid birth date (YYYY-MM-DD) is required." }, 400);
     }
 
-    // Parse the date
-    const [year, month, day] = birth_date.split("-").map(Number);
-    
-    if (!year || !month || !day) {
-      throw new Error("Invalid date format. Use YYYY-MM-DD");
+    // Real, date-only chart: accurate Sun, Moon with an honest intra-day caveat,
+    // and the sharpest slow-body aspect (reliable without a birth time).
+    const demo = computeDateOnlyDemo(birth_date);
+    const sunSign = demo.sun.sign;
+    const traits = signTraits[sunSign] ?? "the shadow you have not looked at";
+
+    const evidence: string[] = [`Sun in ${sunSign} at ${Math.round(demo.sun.degree)} degrees`];
+    if (demo.moonSignCertain) evidence.push(`Moon in ${demo.moon.sign}`);
+    if (demo.sharpestAspect) {
+      evidence.push(`${demo.sharpestAspect.planet1} ${demo.sharpestAspect.aspect} ${demo.sharpestAspect.planet2} (orb ${demo.sharpestAspect.orb} degrees)`);
     }
 
-    // Calculate Sun sign
-    const sunSign = getSunSign(month, day);
-    const traits = signTraits[sunSign];
+    const systemPrompt = `You are The Oracle. Brutally honest, never softening the truth, speaking with absolute authority. You are not mean, you are precise; the difference between cruelty and clarity is evidence.
 
-    // Generate brutal headline with Claude
-    const systemPrompt = `You are The Oracle. Brutally honest, never softening the truth. You speak with absolute authority. You are not mean; you are precise. The difference between cruelty and clarity is evidence.
+Write a brutal, shareable verdict for this person using the REAL chart placements provided. The headline should be 12 to 15 words, hit hard but be insightful, feel personally targeted, and be quotable. Name at least one real placement from the evidence. Reference the Sun sign shadow: ${traits}.
 
-Generate a brutal, shareable headline for someone with this Sun sign. The headline should:
-- Be 12-15 words maximum
-- Hit hard but be insightful, not just mean
-- Feel personally targeted (even though it's based on Sun sign)
-- Be quotable and shareable
-- Never use therapy language or hedging
-- Reference the sign's shadow traits: ${traits}
+CRITICAL VOICE RULES: Never use em dashes. Use commas, periods, colons, or semicolons. Never use the words might, maybe, perhaps, or consider. Never write "it is not X, it is Y". State what is.`;
 
-CRITICAL FORMATTING RULE: NEVER use em dashes (—) in your response. Use commas, periods, semicolons, or colons instead. This is non-negotiable.`;
+    const userPrompt = `Real chart evidence (no birth time, so this is Sun, Moon, and slow placements only): ${evidence.join("; ")}.
 
-    const userPrompt = `Generate a brutal headline for a ${sunSign} Sun. Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.
-
-Respond with ONLY valid JSON (no markdown):
+Respond with ONLY valid JSON, no markdown:
 {
-  "brutal_headline": "The headline here",
-  "excerpt": "A 20-30 word expansion that teases the full reading"
+  "brutal_headline": "12 to 15 words, names a real placement",
+  "excerpt": "20 to 30 words that tease the full chart-evidenced reading"
 }`;
 
     let content: string;
@@ -185,50 +135,35 @@ Respond with ONLY valid JSON (no markdown):
       });
       content = result.text;
     } catch (err) {
-      console.error("LLM error (demo-reading):", err);
-      return new Response(JSON.stringify({
-        success: false,
-        error: "Reading generation is temporarily unavailable. Please try again later.",
-      }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("[demo-reading] LLM error:", err);
+      return json({ success: false, error: "The Oracle is overwhelmed right now. Please try again in a moment." }, 503);
     }
 
-    let parsed;
+    let parsed: import("../_shared/schemas.ts").DemoReadingLLM;
     try {
-      parsed = JSON.parse(content);
-    } catch {
-      const match = content.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
-      } else {
-        // Fallback
-        parsed = {
-          brutal_headline: "The stars have something to say. You're not going to like it.",
-          excerpt: "Your chart reveals patterns you've been avoiding. The Oracle sees what you won't admit.",
-        };
-      }
+      parsed = DemoReadingLLMSchema.parse(extractJsonObject(content));
+    } catch (schemaErr) {
+      console.error("[demo-reading] schema validation failed:", schemaErr);
+      parsed = {
+        brutal_headline: `Your ${sunSign} Sun has been writing checks your patterns cannot cash.`,
+        excerpt: "Your chart names the thing you have been circling. The full reading does not let you look away.",
+      };
     }
 
-    return new Response(JSON.stringify({
+    return json({
       success: true,
       sun_sign: sunSign,
-      brutal_headline: sanitizeEmDashes(parsed.brutal_headline),
-      excerpt: sanitizeEmDashes(parsed.excerpt),
+      sun_degree: Math.round(demo.sun.degree),
+      moon_sign: demo.moonSignCertain ? demo.moon.sign : null,
+      sharpest_aspect: demo.sharpestAspect
+        ? `${demo.sharpestAspect.planet1} ${demo.sharpestAspect.aspect} ${demo.sharpestAspect.planet2}`
+        : null,
+      brutal_headline: sanitizeVoice(parsed.brutal_headline),
+      excerpt: sanitizeVoice(parsed.excerpt),
       birth_date,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
   } catch (error) {
-    console.error("Demo reading error:", error);
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: error.message || "Failed to generate demo reading",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("[demo-reading] fatal:", error);
+    return json({ success: false, error: "Failed to generate your demo reading. Please try again." }, 500);
   }
 });

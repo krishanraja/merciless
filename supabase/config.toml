@@ -52,3 +52,6 @@ verify_jwt = false
 
 [functions.demo-reading]
 verify_jwt = false
+
+[functions.track]
+verify_jwt = false

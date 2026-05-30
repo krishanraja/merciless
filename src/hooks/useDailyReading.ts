@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase, extractFunctionErrorMessage, type Tables } from '../lib/supabase'
+import { trackEvent } from '../lib/attribution'
+
+// Activation = a user has a real reading in front of them. Deduped per user/day
+// in the warehouse via dedupe_key, so emitting on every load is safe.
+function emitActivated(userId: string, date: string) {
+  void trackEvent('activated', { user_id: userId, dedupe_key: `merciless:activated:${userId}:${date}` })
+}
 
 type DailyReadingRow = Tables['daily_readings']['Row']
 
@@ -75,6 +82,7 @@ export function useDailyReading() {
 
       if (data) {
         setReading(mapDailyReading(data))
+        emitActivated(user.id, today)
       } else {
         await generateReading()
       }
@@ -105,7 +113,12 @@ export function useDailyReading() {
           )
         )
       }
-      setReading(res.data ? mapDailyReading(res.data as DailyReadingRow) : null)
+      if (res.data) {
+        setReading(mapDailyReading(res.data as DailyReadingRow))
+        emitActivated(user.id, new Date().toISOString().split('T')[0])
+      } else {
+        setReading(null)
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to generate reading')
     } finally {

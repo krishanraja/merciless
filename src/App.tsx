@@ -11,6 +11,7 @@ import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 import StarfieldBg from './components/StarfieldBg'
 import ErrorBoundary from './components/ErrorBoundary'
+import { captureAttribution, trackEvent } from './lib/attribution'
 import type { User } from '@supabase/supabase-js'
 
 function ProtectedRoute({ user, children }: { user: User | null; children: React.ReactNode }) {
@@ -25,6 +26,15 @@ export default function App() {
   const hadSessionRef = useRef(false)
 
   useEffect(() => {
+    // First-touch attribution capture, then one landed event per browser session.
+    captureAttribution()
+    try {
+      if (!sessionStorage.getItem('mcl_landed')) {
+        sessionStorage.setItem('mcl_landed', '1')
+        void trackEvent('landed')
+      }
+    } catch { void trackEvent('landed') }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       hadSessionRef.current = !!session
       setUser(session?.user ?? null)

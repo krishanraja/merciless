@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { supabase, extractFunctionErrorMessage } from '../lib/supabase'
+import { trackEvent } from '../lib/attribution'
 import DemoResultCard from './DemoResultCard'
 
 type DemoState = 'idle' | 'recording' | 'transcribing' | 'generating' | 'result' | 'error'
@@ -29,6 +30,9 @@ interface TranscriptionResponse {
 interface DemoReadingResponse {
   success: boolean
   sun_sign: string
+  sun_degree?: number
+  moon_sign?: string | null
+  sharpest_aspect?: string | null
   brutal_headline: string
   excerpt: string
   birth_date: string
@@ -180,6 +184,7 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
         birthDate: data.birth_date,
       })
       setState('result')
+      void trackEvent('demo_played', { metadata: { sun_sign: data.sun_sign } })
 
     } catch (err: unknown) {
       const error = err as Error
@@ -349,9 +354,9 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
         )}
       </div>
 
-      {/* Subtle social proof */}
+      {/* Honest, non-fabricated reassurance */}
       <div className="mt-4 text-center text-merciless-muted text-xs">
-        Join 4,200+ who've heard what their chart has to say
+        No signup. No comfort. Just what your chart says.
       </div>
     </div>
   )

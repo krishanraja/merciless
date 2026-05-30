@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { loadStripe } from '@stripe/stripe-js'
+import { attributionForCheckout } from './attribution'
 
 function requireEnv(key: 'VITE_STRIPE_PUBLISHABLE_KEY' | 'VITE_STRIPE_PRICE_ID'): string {
   const value = import.meta.env[key] as string | undefined
@@ -45,7 +46,8 @@ export function getStripe() {
 export async function createCheckoutSession(
   accessToken: string,
   successUrl: string,
-  cancelUrl: string
+  cancelUrl: string,
+  attribution?: Record<string, string>
 ): Promise<{ url: string } | null> {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -59,6 +61,7 @@ export async function createCheckoutSession(
       body: JSON.stringify({
         success_url: successUrl,
         cancel_url: cancelUrl,
+        attribution: attribution && Object.keys(attribution).length ? attribution : undefined,
       }),
     })
 
@@ -79,7 +82,7 @@ export async function redirectToCheckout(
   const successUrl = `${window.location.origin}/reading?upgraded=true`
   const cancelUrl = `${window.location.origin}/reading`
 
-  const session = await createCheckoutSession(accessToken, successUrl, cancelUrl)
+  const session = await createCheckoutSession(accessToken, successUrl, cancelUrl, attributionForCheckout())
 
   if (session?.url) {
     window.location.href = session.url

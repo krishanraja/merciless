@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Tables } from '../lib/supabase'
 import { createCheckoutSession } from '../lib/stripe'
+import { attributionForCheckout } from '../lib/attribution'
 
 export interface SubscriptionData {
   status: 'active' | 'canceled' | 'past_due' | 'inactive'
@@ -63,7 +64,7 @@ export function useSubscription() {
       if (!authSession) throw new Error('Not authenticated')
       const successUrl = `${window.location.origin}/reading?upgraded=true`
       const cancelUrl = `${window.location.origin}/reading`
-      const session = await createCheckoutSession(authSession.access_token, successUrl, cancelUrl)
+      const session = await createCheckoutSession(authSession.access_token, successUrl, cancelUrl, attributionForCheckout())
       if (session?.url) {
         window.location.href = session.url
       }

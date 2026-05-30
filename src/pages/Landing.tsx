@@ -119,10 +119,10 @@ export default function Landing() {
               GET YOUR FULL READING
             </button>
             
-            {/* Social proof */}
+            {/* Honest proof: real capability, not fabricated counts */}
             <div className="mt-8 flex items-center justify-center gap-4 sm:gap-6 text-xs text-merciless-muted">
               <div>
-                <span className="text-merciless-white font-semibold">4,200+</span> charts calculated
+                <span className="text-merciless-white font-semibold">Arc-minute</span> chart math you can verify
               </div>
               <div className="w-px h-3 bg-merciless-border" />
               <div>
