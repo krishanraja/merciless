@@ -40,11 +40,11 @@
     { "source": "/og/:slug", "destination": "/api/og/:slug" },
     { "source": "/astrology/:sign", "destination": "/api/astrology/:sign" },
     { "source": "/compatibility/:pair", "destination": "/api/compatibility/:pair" },
-    { "source": "/reading", "destination": "/index.html" },
-    { "source": "/chart", "destination": "/index.html" },
-    { "source": "/oracle", "destination": "/index.html" },
-    { "source": "/settings", "destination": "/index.html" },
-    { "source": "/onboarding", "destination": "/index.html" },
-    { "source": "/auth/callback", "destination": "/index.html" }
+    { "source": "/reading", "destination": "/" },
+    { "source": "/chart", "destination": "/" },
+    { "source": "/oracle", "destination": "/" },
+    { "source": "/settings", "destination": "/" },
+    { "source": "/onboarding", "destination": "/" },
+    { "source": "/auth/callback", "destination": "/" }
   ]
 }
