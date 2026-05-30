@@ -48,6 +48,7 @@ export function pageShell(opts: {
   const og = "https://merciless.app/og-image.png";
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" sizes="32x32" href="https://merciless.app/favicon-32.png">
 <title>${esc(opts.title)}</title>
 <meta name="description" content="${esc(opts.description)}">
 <link rel="canonical" href="${opts.canonical}">

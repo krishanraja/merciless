@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useNatalChart } from '../hooks/useNatalChart'
 import { useSubscription } from '../hooks/useSubscription'
 import PlanetTable from '../components/PlanetTable'
+import ChartWheel, { type ChartLike } from '../components/ChartWheel'
 import AppNav from '../components/AppNav'
 import { SIGN_ELEMENTS, SIGN_MODALITIES, ELEMENT_COLORS, ELEMENT_EMOJIS, MODALITY_COLORS, ASPECT_COLORS, ASPECT_GLYPHS } from '../lib/astrology'
 import { getSignAsset } from '../lib/signAssets'
@@ -162,6 +163,12 @@ export default function Chart() {
                 <div className="text-merciless-white font-bold text-lg">{chart.midheaven}</div>
                 <div className="text-merciless-muted text-xs mt-1">10th house cusp · legacy</div>
               </div>
+            </div>
+
+            {/* Interactive natal wheel */}
+            <div className="merciless-card p-6">
+              <div className="text-xs tracking-widest text-merciless-muted mb-4">THE WHEEL</div>
+              <ChartWheel chart={chart as unknown as ChartLike} />
             </div>
 
             {/* Planet Table */}

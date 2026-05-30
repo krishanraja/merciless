@@ -27,3 +27,7 @@ npm-debug.log*
 supabase/.temp/
 
 .vercel
+
+# Local dev/QA scaffolding (never shipped)
+dev-*.html
+src/dev-*.tsx
