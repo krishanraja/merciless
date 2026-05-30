@@ -1,11 +1,20 @@
 import { useOracle } from '../hooks/useOracle'
 import { useSubscription } from '../hooks/useSubscription'
+import { useDailyReading } from '../hooks/useDailyReading'
 import OracleChat from '../components/OracleChat'
 import AppNav from '../components/AppNav'
 
 export default function Oracle() {
   const { messages, loading, error, sendMessage, startNewConversation, clearError } = useOracle()
   const { isPro, upgradeToPro, upgrading } = useSubscription()
+  const { reading } = useDailyReading()
+
+  // The Oracle speaks first: it opens with the day's brutal headline and the
+  // sharpest real transit hitting the chart now, before the user asks anything.
+  const t0 = reading?.active_transits?.[0]
+  const opener = reading
+    ? `${reading.brutal_headline}${t0 ? ` Right now, transiting ${t0.transiting_planet} ${t0.aspect}s your natal ${t0.natal_planet}.` : ''} Ask me what to do about it.`
+    : undefined
 
   const handleSend = async (message: string) => {
     if (error) clearError()
@@ -13,7 +22,7 @@ export default function Oracle() {
   }
 
   return (
-    <div className={`relative z-10 ${!isPro ? 'reading-viewport-lock' : 'min-h-screen flex flex-col pb-16 md:pb-0'}`}>
+    <div className="relative z-10 min-h-screen flex flex-col pb-16 md:pb-0">
       <AppNav />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-8 flex flex-col">
@@ -92,6 +101,7 @@ export default function Oracle() {
                 messages={messages}
                 onSend={handleSend}
                 loading={loading}
+                opener={opener}
               />
             </div>
           </>

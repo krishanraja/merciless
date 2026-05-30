@@ -11,6 +11,7 @@ interface OracleChatProps {
   messages: Message[]
   onSend: (message: string) => Promise<void>
   loading: boolean
+  opener?: string
 }
 
 const EXAMPLE_PROMPTS = [
@@ -36,10 +37,39 @@ function formatTimestamp(timestamp: string): string {
   }
 }
 
-export default function OracleChat({ messages, onSend, loading }: OracleChatProps) {
+export default function OracleChat({ messages, onSend, loading, opener }: OracleChatProps) {
   const [input, setInput] = useState('')
+  const [speakingId, setSpeakingId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const speak = async (text: string, id: string) => {
+    if (speakingId) return
+    setSpeakingId(id)
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tts`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ text }),
+      })
+      if (!res.ok) throw new Error('tts')
+      const audio = new Audio(URL.createObjectURL(await res.blob()))
+      audio.onended = () => setSpeakingId(null)
+      audio.onerror = () => setSpeakingId(null)
+      await audio.play()
+    } catch { setSpeakingId(null) }
+  }
+
+  const HearButton = ({ text, id }: { text: string; id: string }) => (
+    <button
+      type="button"
+      onClick={() => speak(text, id)}
+      className="text-[10px] tracking-wider text-merciless-muted/70 hover:text-merciless-gold transition-colors"
+      aria-label="Hear this read aloud"
+    >
+      {speakingId === id ? '◉ speaking' : '▶ hear it'}
+    </button>
+  )
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -73,12 +103,11 @@ export default function OracleChat({ messages, onSend, loading }: OracleChatProp
                   <span className="text-merciless-gold text-sm">☽</span>
                 </div>
               </div>
-              <div className="max-w-[85%] bg-merciless-card border border-merciless-border rounded-xl px-4 py-3">
+              <div className="max-w-[85%] bg-merciless-card border border-merciless-border rounded-xl px-4 py-3 space-y-1.5">
                 <p className="text-merciless-white text-sm leading-relaxed">
-                  I am The Oracle. I speak from your natal chart with absolute authority. 
-                  Ask me about your patterns, your wounds, your timing, your decisions. 
-                  I do not hedge. I do not comfort. I tell you what your chart says.
+                  {opener || `I am The Oracle. I speak from your natal chart with absolute authority. Ask me about your patterns, your wounds, your timing, your decisions. I do not hedge. I do not comfort. I tell you what your chart says.`}
                 </p>
+                <HearButton text={opener || 'I am The Oracle. Ask me anything.'} id="opener" />
               </div>
             </div>
 
@@ -120,11 +149,12 @@ export default function OracleChat({ messages, onSend, loading }: OracleChatProp
               >
                 {msg.content}
               </div>
-              {msg.timestamp && (
-                <div className={`text-[10px] text-merciless-muted/60 px-1 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  {formatTimestamp(msg.timestamp)}
-                </div>
-              )}
+              <div className={`flex items-center gap-3 px-1 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && msg.content && <HearButton text={msg.content} id={`m${i}`} />}
+                {msg.timestamp && (
+                  <span className="text-[10px] text-merciless-muted/60">{formatTimestamp(msg.timestamp)}</span>
+                )}
+              </div>
             </div>
           </div>
         ))}

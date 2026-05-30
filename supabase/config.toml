@@ -64,3 +64,6 @@ verify_jwt = false
 
 [functions.offer-admin]
 verify_jwt = false
+
+[functions.tts]
+verify_jwt = false
