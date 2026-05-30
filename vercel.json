@@ -40,6 +40,6 @@
     { "source": "/og/:slug", "destination": "/api/og/:slug" },
     { "source": "/astrology/:sign", "destination": "/api/astrology/:sign" },
     { "source": "/compatibility/:pair", "destination": "/api/compatibility/:pair" },
-    { "source": "/((?!api/|assets/|signs/|v/|og/|astrology/|compatibility/|offer\\.json|llms\\.txt|sitemap\\.xml|robots\\.txt).*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
