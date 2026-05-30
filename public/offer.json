@@ -46,8 +46,16 @@
       { "name": "Free", "price": "$0", "includes": ["Landing voice demo", "Daily brutal headline from your real chart", "Natal chart calculation"] },
       { "name": "Pro", "price": "$4.99/mo", "stripe_product": "prod_UHoQV8ymZNk4Um", "stripe_price": "price_1TJEo24w6vAdI2o57Rz8Cp3X", "includes": ["Full chart-evidenced daily reading", "Difficulty-rated Stoic actions", "Today's active transits", "The Oracle (multi-turn chat as your chart)", "Full natal chart viewer", "9:16 shareable cards"] }
     ],
-    "sales_line": "$4.99/mo, less than half a coffee. The headline stays free forever, so you only pay if it lands.",
-    "rule": "Currency must render as USD at checkout. If GBP appears, escalate; do not sell on a wrong-price page."
+    "sales_line": "$4.99/mo, less than half a coffee. The full daily reading stays free forever, so you only pay for the chart you can argue with.",
+    "rule": "Currency must render as USD at checkout. If GBP appears, escalate; do not sell on a wrong-price page.",
+    "model_note": "The FULL daily reading is now free for everyone. Pro converts on agency: the Oracle, the full chart viewer, the forward path. Do not pitch Pro as unlocking the reading text.",
+    "proposed_premium_tier": {
+      "status": "PROPOSAL, not live. Do not pitch as available.",
+      "price": "$15 to $19/mo",
+      "includes": ["the voice Oracle relationship", "persistent verifiable memory", "the dated forward transit path", "unlimited synastry"],
+      "plus": "a one-time Couple unlock SKU for higher ACV",
+      "gate": "Do not create or sell this until the attribution warehouse reports real cohort LTV. Keep $4.99 as the anchor until then."
+    }
   },
 
   "current_offer": {

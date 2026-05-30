@@ -45,6 +45,15 @@ interface TryMeSectionProps {
   onSignupClick: () => void
 }
 
+// Zero-input cold open: a true read of the moment before we ask for anything.
+function coldRead(): string {
+  const h = new Date().getHours()
+  if (h < 5) return 'It is the middle of the night where you are, and you opened an app that promised to be cruel. That is already a reading.'
+  if (h < 12) return 'You are starting your day by asking what is wrong with you. Bold.'
+  if (h < 18) return 'You stepped out of your day to be told the truth. Let us not waste it.'
+  return 'You made it to the end of the day and came here for the verdict, not the comfort.'
+}
+
 export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
   const [state, setState] = useState<DemoState>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -237,6 +246,7 @@ export default function TryMeSection({ onSignupClick }: TryMeSectionProps) {
         <p className="text-merciless-muted text-sm">
           Speak your birth date. Get a taste of what your chart has to say.
         </p>
+        <p className="text-merciless-muted/70 text-xs italic mt-3 max-w-sm mx-auto">{coldRead()}</p>
       </div>
 
       <div className="bg-merciless-card border border-merciless-border rounded-2xl p-6 md:p-8">
