@@ -99,7 +99,7 @@ export default function Settings() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-merciless-white font-semibold">Merciless Pro</div>
-                  <div className="text-merciless-muted text-sm mt-1">$4.99/month · All features unlocked</div>
+                  <div className="text-merciless-muted text-sm mt-1">$4.99/month · the Oracle, the chart, transits</div>
                   {periodEnd && (
                     <div className="text-merciless-muted text-xs mt-1">
                       {subscription?.cancel_at_period_end

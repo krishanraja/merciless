@@ -201,11 +201,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
         <div className="mt-6 pt-6 border-t border-merciless-border space-y-3 text-xs text-merciless-muted">
           <div className="flex items-center gap-2">
             <span className="text-merciless-gold">☉</span>
-            <span>Free: Daily headline from your chart</span>
+            <span>Free: the full daily reading from your chart</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-merciless-violet-light">★</span>
-            <span>Pro $4.99/mo: Full reading + Stoic actions + The Oracle</span>
+            <span>Pro $4.99/mo: the Oracle, the chart, the forward path</span>
           </div>
         </div>
       </div>
