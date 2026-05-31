@@ -68,6 +68,27 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
     }
   }
 
+  const handleGoogle = async () => {
+    setError(null)
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (err) setError(err.message)
+  }
+
+  const handleMagicLink = async () => {
+    if (!email) { setError('Enter your email first.'); return }
+    setLoading(true); setError(null); setSuccess(null)
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback`, data: attributionUserMetadata() },
+    })
+    setLoading(false)
+    if (err) setError(err.message)
+    else setSuccess('Check your inbox for a one-tap magic link.')
+  }
+
   if (!isOpen) return null
 
   return (
@@ -103,6 +124,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               : 'Your chart is waiting.'}
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleGoogle}
+          className="w-full py-3 mb-4 bg-white text-merciless-black font-semibold text-sm rounded-lg hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15A11 11 0 002.18 7.06L5.84 9.9C6.71 7.3 9.14 4.75 12 4.75z"/></svg>
+          Continue with Google
+        </button>
+        <div className="flex items-center gap-3 mb-4"><div className="flex-1 h-px bg-merciless-border" /><span className="text-merciless-muted text-xs">or</span><div className="flex-1 h-px bg-merciless-border" /></div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
@@ -156,6 +187,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
             className="text-merciless-muted text-sm hover:text-merciless-white transition-colors"
           >
             {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+          </button>
+          <button
+            type="button"
+            onClick={handleMagicLink}
+            disabled={loading}
+            className="block mx-auto mt-3 text-merciless-muted text-xs hover:text-merciless-gold transition-colors disabled:opacity-50"
+          >
+            Email me a magic link instead
           </button>
         </div>
 
