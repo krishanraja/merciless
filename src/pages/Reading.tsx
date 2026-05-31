@@ -214,11 +214,18 @@ export default function Reading() {
                 </div>
 
                 <button
-                  onClick={upgradeToPro}
+                  onClick={() => upgradeToPro('pro')}
                   disabled={upgrading}
                   className="w-full max-w-xs mx-auto block py-4 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50 animate-pulse-gold"
                 >
-                  {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE'}
+                  {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE, $4.99/mo'}
+                </button>
+                <button
+                  onClick={() => upgradeToPro('premium')}
+                  disabled={upgrading}
+                  className="w-full max-w-xs mx-auto block py-2.5 mt-2 border border-merciless-violet/40 text-merciless-violet-light text-[11px] tracking-widest rounded-lg hover:border-merciless-violet transition-all disabled:opacity-50"
+                >
+                  OR GO PREMIUM, $17/mo: VOICE ORACLE, MEMORY, UNLIMITED SYNASTRY
                 </button>
               </div>
             )}

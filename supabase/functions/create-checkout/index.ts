@@ -37,7 +37,7 @@ serve(async (req) => {
     const user_id = user.id;
     const email = user.email ?? undefined;
 
-    let body: { success_url?: string; cancel_url?: string; attribution?: unknown };
+    let body: { success_url?: string; cancel_url?: string; attribution?: unknown; tier?: string };
     try {
       body = await req.json();
     } catch {
@@ -45,7 +45,14 @@ serve(async (req) => {
     }
     const attribution = attributionMetadata(body.attribution);
 
-    const PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") || "price_1TJEo24w6vAdI2o57Rz8Cp3X";
+    // Tiered checkout: pro ($4.99/mo), premium ($17/mo), couple (one-time).
+    const tier = typeof body.tier === "string" ? body.tier : "pro";
+    const PRICES: Record<string, { price: string; mode: "subscription" | "payment" }> = {
+      pro: { price: Deno.env.get("STRIPE_PRICE_ID") || "price_1TJEo24w6vAdI2o57Rz8Cp3X", mode: "subscription" },
+      premium: { price: Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_1Tcwya4w6vAdI2o5SByqDONx", mode: "subscription" },
+      couple: { price: Deno.env.get("STRIPE_COUPLE_PRICE_ID") || "price_1Tcwya4w6vAdI2o5qF09Nij3", mode: "payment" },
+    };
+    const sel = PRICES[tier] ?? PRICES.pro;
     const secretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!secretKey) {
       console.error("[create-checkout] STRIPE_SECRET_KEY not set");
@@ -70,18 +77,19 @@ serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") ?? "https://merciless.app";
-    const session = await stripe.checkout.sessions.create({
+    const params: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ["card"],
-      line_items: [{ price: PRICE_ID, quantity: 1 }],
-      mode: "subscription",
+      line_items: [{ price: sel.price, quantity: 1 }],
+      mode: sel.mode,
       success_url: body.success_url || `${origin}/reading?upgraded=true`,
       cancel_url: body.cancel_url || `${origin}/reading`,
-      // Stamp attribution on the SESSION and, critically, on the SUBSCRIPTION,
-      // which previously carried no metadata at all. The webhook reads it back.
-      metadata: { user_id, price_id: PRICE_ID, ...attribution },
-      subscription_data: { metadata: { user_id, ...attribution } },
-    });
+      // Stamp attribution on the SESSION and on the SUBSCRIPTION/payment intent.
+      metadata: { user_id, price_id: sel.price, tier, ...attribution },
+    };
+    if (sel.mode === "subscription") params.subscription_data = { metadata: { user_id, tier, ...attribution } };
+    else params.payment_intent_data = { metadata: { user_id, tier, ...attribution } };
+    const session = await stripe.checkout.sessions.create(params);
 
     return json({ url: session.url });
   } catch (error) {

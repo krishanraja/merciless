@@ -68,7 +68,7 @@ export default function Oracle() {
 
               <div className="space-y-2">
                 <button
-                  onClick={upgradeToPro}
+                  onClick={() => upgradeToPro('pro')}
                   disabled={upgrading}
                   className="w-full px-6 py-4 bg-merciless-violet text-white font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-violet-light transition-all disabled:opacity-50"
                 >

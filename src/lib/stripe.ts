@@ -43,11 +43,14 @@ export function getStripe() {
   return stripePromise
 }
 
+export type CheckoutTier = 'pro' | 'premium' | 'couple'
+
 export async function createCheckoutSession(
   accessToken: string,
   successUrl: string,
   cancelUrl: string,
-  attribution?: Record<string, string>
+  attribution?: Record<string, string>,
+  tier: CheckoutTier = 'pro'
 ): Promise<{ url: string } | null> {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -62,6 +65,7 @@ export async function createCheckoutSession(
         success_url: successUrl,
         cancel_url: cancelUrl,
         attribution: attribution && Object.keys(attribution).length ? attribution : undefined,
+        tier,
       }),
     })
 

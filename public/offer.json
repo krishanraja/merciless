@@ -49,12 +49,13 @@
     "sales_line": "$4.99/mo, less than half a coffee. The full daily reading stays free forever, so you only pay for the chart you can argue with.",
     "rule": "Currency must render as USD at checkout. If GBP appears, escalate; do not sell on a wrong-price page.",
     "model_note": "The FULL daily reading is now free for everyone. Pro converts on agency: the Oracle, the full chart viewer, the forward path. Do not pitch Pro as unlocking the reading text.",
-    "proposed_premium_tier": {
-      "status": "PROPOSAL, not live. Do not pitch as available.",
-      "price": "$15 to $19/mo",
-      "includes": ["the voice Oracle relationship", "persistent verifiable memory", "the dated forward transit path", "unlimited synastry"],
-      "plus": "a one-time Couple unlock SKU for higher ACV",
-      "gate": "Do not create or sell this until the attribution warehouse reports real cohort LTV. Keep $4.99 as the anchor until then."
+    "premium_tier": {
+      "status": "LIVE",
+      "price": "$17/mo",
+      "stripe_price": "price_1Tcwya4w6vAdI2o5SByqDONx",
+      "includes": ["the voice Oracle relationship", "persistent memory", "the dated forward transit path", "unlimited synastry"],
+      "couple_unlock": { "price": "$9 one-time", "stripe_price": "price_1Tcwya4w6vAdI2o5qF09Nij3" },
+      "checkout": "POST /functions/v1/create-checkout with { tier: 'premium' | 'couple' | 'pro' }"
     }
   },
 

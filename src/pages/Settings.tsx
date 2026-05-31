@@ -110,14 +110,21 @@ export default function Settings() {
             <div className="space-y-4">
               <div>
                 <div className="text-merciless-white font-semibold">Free plan</div>
-                <div className="text-merciless-muted text-sm mt-1">Daily headline only</div>
+                <div className="text-merciless-muted text-sm mt-1">The full daily reading, free. Pro adds the Oracle, the chart, and the forward path.</div>
               </div>
               <button
-                onClick={upgradeToPro}
+                onClick={() => upgradeToPro('pro')}
                 disabled={upgrading}
                 className="w-full py-3.5 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50"
               >
-                {upgrading ? 'REDIRECTING...' : 'UPGRADE TO PRO: $4.99/mo'}
+                {upgrading ? 'REDIRECTING...' : 'UNLOCK THE ORACLE: $4.99/mo'}
+              </button>
+              <button
+                onClick={() => upgradeToPro('premium')}
+                disabled={upgrading}
+                className="w-full py-2.5 border border-merciless-violet/40 text-merciless-violet-light text-[11px] tracking-widest rounded-lg hover:border-merciless-violet transition-all disabled:opacity-50"
+              >
+                GO PREMIUM: $17/mo
               </button>
             </div>
           )}

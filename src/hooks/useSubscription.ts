@@ -57,14 +57,14 @@ export function useSubscription() {
     }
   }
 
-  const upgradeToPro = async () => {
+  const upgradeToPro = async (tier: 'pro' | 'premium' | 'couple' = 'pro') => {
     try {
       setUpgrading(true)
       const { data: { session: authSession } } = await supabase.auth.getSession()
       if (!authSession) throw new Error('Not authenticated')
       const successUrl = `${window.location.origin}/reading?upgraded=true`
       const cancelUrl = `${window.location.origin}/reading`
-      const session = await createCheckoutSession(authSession.access_token, successUrl, cancelUrl, attributionForCheckout())
+      const session = await createCheckoutSession(authSession.access_token, successUrl, cancelUrl, attributionForCheckout(), tier)
       if (session?.url) {
         window.location.href = session.url
       }

@@ -86,7 +86,7 @@ export default function Chart() {
               </p>
             </div>
             <button
-              onClick={upgradeToPro}
+              onClick={() => upgradeToPro('pro')}
               disabled={upgrading}
               className="px-8 py-4 bg-merciless-gold text-merciless-black font-bold text-sm tracking-widest rounded-lg hover:bg-merciless-gold/90 transition-all disabled:opacity-50"
             >
