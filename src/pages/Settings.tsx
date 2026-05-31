@@ -5,6 +5,24 @@ import { supabase } from '../lib/supabase'
 import { useSubscription } from '../hooks/useSubscription'
 import { useNatalChart } from '../hooks/useNatalChart'
 import AppNav from '../components/AppNav'
+import { getNotificationPrefs, enablePush, disablePush, setEmailDigest, setTransitAlerts, pushSupported, type NotificationPrefs } from '../lib/push'
+
+function ToggleRow({ label, desc, on, disabled, onToggle }: { label: string; desc: string; on: boolean; disabled?: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="text-merciless-white text-sm font-medium">{label}</div>
+        <div className="text-merciless-muted text-xs mt-0.5">{desc}</div>
+      </div>
+      <button
+        type="button" onClick={onToggle} disabled={disabled} aria-pressed={on} aria-label={label}
+        className={`flex-shrink-0 w-11 h-6 rounded-full transition-colors relative disabled:opacity-40 ${on ? 'bg-merciless-gold' : 'bg-merciless-border'}`}
+      >
+        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-merciless-black transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
+  )
+}
 
 export default function Settings() {
   const navigate = useNavigate()
@@ -13,9 +31,22 @@ export default function Settings() {
   const [signingOut, setSigningOut] = useState(false)
   const [user, setUser] = useState<User | null>(null)
 
+  const [prefs, setPrefs] = useState<NotificationPrefs>({ push_enabled: false, email_enabled: false, transit_alerts: false })
+  const [notifBusy, setNotifBusy] = useState(false)
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
+    getNotificationPrefs().then(setPrefs)
   }, [])
+
+  const togglePush = async () => {
+    setNotifBusy(true)
+    if (prefs.push_enabled) { await disablePush(); setPrefs((p) => ({ ...p, push_enabled: false })) }
+    else { const ok = await enablePush(); setPrefs((p) => ({ ...p, push_enabled: ok })) }
+    setNotifBusy(false)
+  }
+  const toggleEmail = async () => { const v = !prefs.email_enabled; setPrefs((p) => ({ ...p, email_enabled: v })); await setEmailDigest(v) }
+  const toggleTransit = async () => { const v = !prefs.transit_alerts; setPrefs((p) => ({ ...p, transit_alerts: v })); await setTransitAlerts(v) }
 
   const handleSignOut = async () => {
     setSigningOut(true)
@@ -128,6 +159,15 @@ export default function Settings() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Notifications */}
+        <div className="merciless-card p-6 space-y-5">
+          <div className="text-xs tracking-widest text-merciless-muted mb-1">NOTIFICATIONS</div>
+          <ToggleRow label="Daily summons" desc="A push at your morning with the day's reading and the transit driving it." on={prefs.push_enabled} disabled={notifBusy || !pushSupported()} onToggle={togglePush} />
+          <ToggleRow label="Weekly letter" desc="A Monday email recap of the week your chart sees coming." on={prefs.email_enabled} onToggle={toggleEmail} />
+          <ToggleRow label="Transit alerts" desc="A rare alert only when a heavyweight transit goes exact. The chart reaching out, one tap to turn off." on={prefs.transit_alerts} onToggle={toggleTransit} />
+          {!pushSupported() && <p className="text-merciless-muted text-xs">Push is not supported in this browser. Email still works.</p>}
         </div>
 
         {/* Birth Data */}

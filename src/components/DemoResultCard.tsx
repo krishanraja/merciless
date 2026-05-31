@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import DemoShareCard from './DemoShareCard'
 import { getSignAsset } from '../lib/signAssets'
+import { supabase } from '../lib/supabase'
+import { getAttribution } from '../lib/attribution'
 
 interface DemoResult {
   sunSign: string
@@ -21,6 +23,20 @@ export default function DemoResultCard({ result, onReset, onSignupClick }: DemoR
   const [showExcerpt, setShowExcerpt] = useState(false)
   const [showActions, setShowActions] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
+  const [leadEmail, setLeadEmail] = useState('')
+  const [leadSent, setLeadSent] = useState(false)
+  const [leadBusy, setLeadBusy] = useState(false)
+
+  const submitLead = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!leadEmail || leadBusy) return
+    setLeadBusy(true)
+    try {
+      await supabase.functions.invoke('capture-lead', {
+        body: { email: leadEmail, mcl_cid: getAttribution()?.mcl_cid, sun_sign: result.sunSign, birth_date: result.birthDate },
+      })
+    } catch { /* swallow */ } finally { setLeadSent(true); setLeadBusy(false) }
+  }
 
   // Typewriter effect for headline
   useEffect(() => {
@@ -113,13 +129,25 @@ export default function DemoResultCard({ result, onReset, onSignupClick }: DemoR
           </div>
         </div>
 
-        {/* Teaser for full reading */}
-        <div className={`mt-6 pt-6 border-t border-merciless-border text-center transition-all duration-500 delay-300 ${showActions ? 'opacity-100' : 'opacity-0'}`}>
-          <p className="text-merciless-muted text-xs">
-            This is just your Sun sign. Your full chart includes Moon, Rising, 
-            <br className="hidden sm:block" />
-            transits, and what the Oracle <em>really</em> wants to tell you.
-          </p>
+        {/* Consented re-engagement opt-in (the chart reaching out) */}
+        <div className={`mt-6 pt-6 border-t border-merciless-border transition-all duration-500 delay-300 ${showActions ? 'opacity-100' : 'opacity-0'}`}>
+          {leadSent ? (
+            <p className="text-merciless-muted text-xs text-center">Done. The chart will reach out when it goes loud. One tap to stop, any time.</p>
+          ) : (
+            <form onSubmit={submitLead} className="space-y-2">
+              <p className="text-merciless-muted text-xs text-center">Not ready to sign up? I will tell you when your chart goes loud.</p>
+              <div className="flex gap-2">
+                <input
+                  type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="you@example.com"
+                  className="flex-1 bg-merciless-black border border-merciless-border rounded-lg px-3 py-2 text-merciless-white text-xs focus:border-merciless-gold focus:ring-1 focus:ring-merciless-gold"
+                />
+                <button type="submit" disabled={!leadEmail || leadBusy} className="px-3 py-2 border border-merciless-gold/40 text-merciless-gold text-xs font-semibold rounded-lg hover:bg-merciless-gold/10 transition-all disabled:opacity-40">
+                  {leadBusy ? '...' : 'NOTIFY ME'}
+                </button>
+              </div>
+              <p className="text-merciless-muted/60 text-[10px] text-center">You are asking the chart to email you when a real transit hits. Never a sales push. One tap to stop.</p>
+            </form>
+          )}
         </div>
       </div>
     </div>

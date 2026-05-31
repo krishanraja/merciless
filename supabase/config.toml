@@ -70,3 +70,12 @@ verify_jwt = false
 
 [functions.transit-timeline]
 verify_jwt = false
+
+[functions.send-notifications]
+verify_jwt = false
+
+[functions.capture-lead]
+verify_jwt = false
+
+[functions.lead-unsubscribe]
+verify_jwt = false

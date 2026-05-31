@@ -12,33 +12,29 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      api_global_budget: {
+        Row: {
+          bucket: string
+          count: number
+          day: string
+          updated_at: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          day?: string
+          updated_at?: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          day?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_readings: {
         Row: {
           active_transits: Json | null
@@ -84,6 +80,105 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_global_budget: {
+        Row: {
+          count: number
+          day: string
+          updated_at: string
+        }
+        Insert: {
+          count?: number
+          day: string
+          updated_at?: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      demo_rate_limit: {
+        Row: {
+          count: number
+          fingerprint: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          fingerprint: string
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          fingerprint?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      fleet_offer: {
+        Row: {
+          id: number
+          overrides: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          overrides?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          overrides?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      lead_signals: {
+        Row: {
+          birth_date: string | null
+          consented_at: string
+          email: string
+          id: string
+          last_contacted_at: string | null
+          mcl_cid: string | null
+          source: string
+          sun_sign: string | null
+          unsubscribe_token: string
+          unsubscribed: boolean
+        }
+        Insert: {
+          birth_date?: string | null
+          consented_at?: string
+          email: string
+          id?: string
+          last_contacted_at?: string | null
+          mcl_cid?: string | null
+          source?: string
+          sun_sign?: string | null
+          unsubscribe_token?: string
+          unsubscribed?: boolean
+        }
+        Update: {
+          birth_date?: string | null
+          consented_at?: string
+          email?: string
+          id?: string
+          last_contacted_at?: string | null
+          mcl_cid?: string | null
+          source?: string
+          sun_sign?: string | null
+          unsubscribe_token?: string
+          unsubscribed?: boolean
+        }
+        Relationships: []
+      }
       natal_charts: {
         Row: {
           ascendant: string | null
@@ -126,6 +221,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_prefs: {
+        Row: {
+          email_enabled: boolean
+          push_enabled: boolean
+          transit_alerts: boolean
+          unsubscribed: boolean
+          updated_at: string
+          user_id: string
+          utc_offset_minutes: number
+        }
+        Insert: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          transit_alerts?: boolean
+          unsubscribed?: boolean
+          updated_at?: string
+          user_id: string
+          utc_offset_minutes?: number
+        }
+        Update: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          transit_alerts?: boolean
+          unsubscribed?: boolean
+          updated_at?: string
+          user_id?: string
+          utc_offset_minutes?: number
+        }
+        Relationships: []
+      }
       oracle_conversations: {
         Row: {
           created_at: string | null
@@ -150,6 +275,87 @@ export type Database = {
           session_title?: string | null
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      public_verdicts: {
+        Row: {
+          created_at: string
+          excerpt: string | null
+          headline: string
+          kind: string
+          moon_sign: string | null
+          rising_sign: string | null
+          slug: string
+          sun_sign: string | null
+        }
+        Insert: {
+          created_at?: string
+          excerpt?: string | null
+          headline: string
+          kind?: string
+          moon_sign?: string | null
+          rising_sign?: string | null
+          slug: string
+          sun_sign?: string | null
+        }
+        Update: {
+          created_at?: string
+          excerpt?: string | null
+          headline?: string
+          kind?: string
+          moon_sign?: string | null
+          rising_sign?: string | null
+          slug?: string
+          sun_sign?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stripe_processed_events: {
+        Row: {
+          event_id: string
+          processed_at: string
+          type: string | null
+        }
+        Insert: {
+          event_id: string
+          processed_at?: string
+          type?: string | null
+        }
+        Update: {
+          event_id?: string
+          processed_at?: string
+          type?: string | null
         }
         Relationships: []
       }
@@ -236,7 +442,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      api_global_budget_bump: { Args: { p_bucket: string }; Returns: number }
+      demo_global_budget_bump: { Args: never; Returns: number }
+      demo_rate_limit_bump: {
+        Args: { p_fingerprint: string; p_window_seconds?: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
@@ -365,9 +576,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
