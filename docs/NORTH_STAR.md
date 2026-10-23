@@ -8,6 +8,24 @@ Last verified: 2026-10-18
 
 Set by Krish on 18 October 2026. It is not reached yet. It is what every session in this repository works toward.
 
+## The number
+
+**Months in which subscriptions pay for the running costs, if revived** by 25 January 2027. Merciless is retired. If Krish revives it, the target is to pay for itself within three months of that date.
+
+```yaml north-star-metric
+metric: "Months in which subscriptions pay for the running costs, if revived"
+unit: count
+direction: milestone
+target: 1
+deadline: 2027-01-25
+ladder_shape: milestone
+source: "Stripe and hosting costs"
+status: paused
+ladder: none
+```
+
+Urgency (U1 to U5) is worked out every week from where the number stands against that week's target, by [the harness contract](https://github.com/krishanraja/ai-harness/blob/main/contract/north-star-metric.md). Set by Krish on 23 October 2026.
+
 ## How to use it
 
 - Read it before any work, every session.
